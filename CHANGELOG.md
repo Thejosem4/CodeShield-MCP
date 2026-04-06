@@ -9,26 +9,50 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ## [0.3.0] - 2026-04-06 - ALPHA
 
+### Changed
+- 🔄 **BREAKING** Migración completa de Python a TypeScript
+  - El paquete ahora es Node.js/TypeScript, no Python
+  - `src-python/` removido (código legado)
+  - `tests/` removido (tests de Python)
+  - `requirements.txt` y `setup.py` removidos
+  - Nuevo stack: TypeScript + `@modelcontextprotocol/sdk`
+- 🔄 CI workflows actualizados para Node.js (20+) en vez de Python
+- 🔄 README.md, CLAUDE.md, SPEC.md actualizados para reflejar stack TypeScript
+- 🔄 Issue templates actualizados (Python environment → Node.js)
+
 ### Added
-- ✅ `server.py` - Servidor MCP completo con FastMCP
-- ✅ 5 tools expuestas como MCP: `analyze_prompt`, `verify_code`, `suggest_similar_name`, `fix_code`, `index_project`
-- ✅ Transporte stdio (compatible con Claude Code, Claude CLI, Gemini CLI)
-- ✅ `setup.py` con entry point `codeshield` y soporte `pip install -e .`
-- ✅ Fix case-insensitive en `classes.py` (Datafram → DataFrame)
-- ✅ `tools/__init__.py` y `fixers/__init__.py` (estructura para expansión)
+- ✅ `src/src/server.ts` - MCP server con TypeScript SDK
+- ✅ `src/src/detection/index.ts` - Motor de detección en TypeScript
+- ✅ `src/package.json` - Dependencias Node.js
+- ✅ `src/tsconfig.json` - Configuración TypeScript
+- ✅ `docs/DEVELOPMENT-PLAN.md` - Plan de desarrollo v0.4.0+
 
-### Tests
-- ✅ 149 tests unitarios passing (+78 desde v0.2.0)
-- ✅ Detection engines: 72 tests passing
-- ✅ Integration tests con JSON-RPC sobre stdio validados
+### Removed
+- ❌ `src-python/` - Código Python legacy (migrado a TypeScript)
+- ❌ `tests/` - Tests de Python (no aplican a TypeScript)
+- ❌ `venv/`, `.pytest_cache/` - Ambiente Python
+- ❌ `.github/workflows/release.yml` - PyPI release (usar npm)
+- ❌ `config/`, `docs/VERSION-GUIDE.md`, `docs/quickstart.md`
 
-### Documentation
-- ✅ README.md actualizado con estado v0.3.0
-- ✅ Roadmap actualizado con MCP server como completado
-- ✅ .mcp.json configurado para conexión local
+### Technical Details
 
-### Fixed
-- ✅ `classes.py` case-insensitive typo matching (bug: Datafram no matcheaba DataFrame)
+**Nuevo stack:**
+- Node.js 20+
+- TypeScript 5.3+
+- `@modelcontextprotocol/sdk` ^1.0.0
+- `zod` ^4.3.6
+- `tsx` para desarrollo con hot-reload
+
+**Estructura:**
+```
+src/
+├── src/
+│   ├── server.ts           # MCP server
+│   └── detection/
+│       └── index.ts        # Detection engine
+├── package.json
+└── tsconfig.json
+```
 
 ---
 
@@ -44,19 +68,6 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 - ✅ Detection engine `functions.py` - Detecta métodos con typos (count_items, sumArray)
 - ✅ Detection engine `classes.py` - Detecta clases mal nombradas (DatetimeTZ, datafram)
 
-### Tests
-- ✅ 71 tests unitarios passing
-- ✅ Tests para detection/imports.py
-- ✅ Tests para detection/functions.py
-- ✅ Tests para detection/classes.py
-- ✅ Tests para tools principales
-
-### Documentation
-- ✅ README.md actualizado
-- ✅ CLAUDE.md con workflow TDD y estructura de tests
-- ✅ CONTRIBUTING.md con guía de contribución
-- ✅ LICENSE (MIT)
-
 ---
 
 ## [0.1.0] - 2026-04-04 - PRE-ALPHA
@@ -64,59 +75,13 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 ### Added
 - Estructura inicial del proyecto
 - SPEC.md con especificación completa
-- CLAUDE.md con contexto e instrucciones
 - requirements.txt con dependencias base
 - .gitignore configurado
 - Template de configuración
 - docs/ROADMAP.md
-- docs/VERSION-GUIDE.md
-- docs/quickstart.md
 - .github/workflows/ci.yml
-- .github/workflows/release.yml
 - .github/ISSUE_TEMPLATE/
 
-> **Nota:** Esta es una versión pre-alpha. No recomendada para uso en producción.
-
 ---
 
-## Estructura del Proyecto (v0.3.0)
-
-```
-CodeShield-MCP/
-├── src/codeshield/           # Código fuente
-│   ├── __init__.py           # Tools: verify, pre_analyze, suggest, auto_fix, index
-│   ├── server.py             # MCP server con FastMCP (NUEVO)
-│   ├── detection/
-│   │   ├── __init__.py       # Exports de todos los engines
-│   │   ├── imports.py        # Detection de imports y typos
-│   │   ├── functions.py      # Detection de métodos con errores
-│   │   └── classes.py        # Detection de clases mal nombradas
-│   ├── tools/                 # Handlers MCP (expansión futura)
-│   └── fixers/                # Patterns de fix (expansión futura)
-├── tests/
-│   ├── conftest.py           # Fixtures compartidos
-│   ├── unit/
-│   │   ├── detection/        # 72 tests para engines
-│   │   ├── test_verify_generated_code.py
-│   │   ├── test_pre_analyze_prompt.py
-│   │   ├── test_suggest_similar.py
-│   │   ├── test_auto_fix.py
-│   │   └── test_index_codebase.py
-│   └── integration/
-├── setup.py                   # Entry point (NUEVO)
-└── docs/
-```
-
----
-
-## Próximos Pasos (v0.4.0)
-
-- [ ] Integration tests con Claude Code conectado
-- [ ] Soporte para JavaScript/TypeScript en detection engines
-- [ ] Configurar pyproject.toml moderno
-- [ ] Publicar en PyPI
-- [ ] GitHub release v0.3.0
-
----
-
-*Last updated: 2026-04-04*
+*Last updated: 2026-04-06*
