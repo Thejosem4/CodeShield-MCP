@@ -177,7 +177,7 @@ index:
 |-----------|-------------|
 | [SPEC.md](SPEC.md) | Especificación técnica completa |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Features futuras y timeline |
-| [CLAUDE.md](CLAUDE.md) | Contexto para desarrollo |
+| [docs/DEVELOPMENT-PLAN.md](docs/DEVELOPMENT-PLAN.md) | Plan de desarrollo |
 | [CHANGELOG.md](CHANGELOG.md) | Historial de cambios |
 
 ---
