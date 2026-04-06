@@ -1,0 +1,56 @@
+name: Feature Request
+description: Suggest a new feature or improvement
+title: "[FEATURE] "
+
+labels: [enhancement]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Feature Description
+        Describe la nueva funcionalidad que te gustaría ver.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema que resuelve
+      placeholder: |
+        Qué problema del día a día resolvería esta feature?
+
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Solución propuesta
+      placeholder: |
+        Cómo imaginas que debería funcionar?
+
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternativas consideradas
+      placeholder: |
+        Qué otras opciones has considerado?
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto adicional
+      placeholder: |
+        Screenshots, ejemplos de código, links a documentación, etc.
+
+  - type: checkboxes
+    id: checklist
+    attributes:
+      label: Checklist
+      options:
+        - label: "Esta feature está alineada con los objetivos del proyecto"
+        - label: "No duplica funcionalidad existente"
+        - label: "Es viable técnicamente"
