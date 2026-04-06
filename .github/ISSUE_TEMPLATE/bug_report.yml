@@ -48,7 +48,7 @@ body:
       label: Environment
       placeholder: |
         - OS: [e.g. Windows 11, Ubuntu 22.04]
-        - Python version:
+        - Node.js version:
         - CodeShield version:
 
   - type: dropdown

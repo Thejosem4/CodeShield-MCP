@@ -2,10 +2,9 @@
 
 **Prevenir alucinaciones del LLM antes de que genere código.**
 
-[![PyPI version](https://badge.fury.io/py/codeshield-mcp.svg)](https://badge.fury.io/py/codeshield-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
-[![Tests](https://img.shields.io/badge/tests-149%20passing-success)](tests/)
+[![TypeScript](https://img.shields.io/badge/typescript-5.3-blue.svg)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/node-20+-green.svg)](https://nodejs.org/)
 
 ---
 
@@ -40,27 +39,19 @@ Cuando un LLM genera código, puede incluir:
 
 ## Estado Actual
 
-**Versión:** 0.3.0 (ALPHA) - **149 tests passing** ✅
+**Versión:** 0.3.0 (ALPHA)
 
-### Funcionalidades Implementadas
+### Herramientas Disponibles
 
-| Herramienta | Status | Descripción |
-|-------------|--------|-------------|
-| `verify_generated_code` | ✅ | Verifica código generado contra codebase |
-| `pre_analyze_prompt` | ✅ | Analiza prompts antes de generar |
-| `suggest_similar` | ✅ | Sugiere correcciones para typos |
-| `auto_fix` | ✅ | Corrige automáticamente errores |
-| `index_codebase` | ✅ | Indexa proyecto para referencias precisas |
+| Herramienta | Descripción |
+|-------------|-------------|
+| `analyze_prompt` | Analiza prompts antes de generar código |
+| `verify_code` | Verifica código generado contra codebase |
+| `suggest_similar_name` | Sugiere correcciones para typos |
+| `fix_code` | Corrige automáticamente errores |
+| `index_project` | Indexa proyecto para referencias precisas |
 
-### Detection Engines
-
-| Engine | Status | Descripción |
-|--------|--------|-------------|
-| `imports.py` | ✅ | Detecta imports y funciones inexistentes |
-| `functions.py` | ✅ | Detecta métodos con typos (count_items, sumArray) |
-| `classes.py` | ✅ | Detecta clases mal nombradas |
-
-### Lenguajes Soportados (v0.3.0)
+### Lenguajes Soportados
 
 - 🐍 **Python** - Soporte completo
 - 📜 JavaScript - En desarrollo
@@ -70,119 +61,113 @@ Cuando un LLM genera código, puede incluir:
 
 ## Instalación
 
+### Prerrequisitos
+
+- Node.js 20+
+- npm 10+
+
+### Pasos
+
 ```bash
 # Clonar
-git clone https://github.com/yourusername/codeshield-mcp.git
-cd codeshield-mcp
+git clone https://github.com/Thejosem4/CodeShield-MCP.git
+cd CodeShield-MCP
 
-# Crear venv (recomendado)
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# venv\Scripts\activate   # Windows
+# Instalar dependencias
+cd src
+npm install
 
-# Instalar
-pip install --upgrade mcp
-pip install -r requirements.txt
+# Desarrollo (con hot-reload)
+npm run dev
 
-# Verificar que todo funciona
-pytest tests/ -v
+# Build para producción
+npm run build
+```
+
+### Configuración en Claude Code
+
+Agregar a `~/.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "codeshield": {
+      "command": "cmd",
+      "args": [
+        "/c",
+        "npx",
+        "tsx",
+        "C:/Projects/CodeShield-MCP/src/src/server.ts"
+      ],
+      "cwd": "C:/Projects/CodeShield-MCP/src"
+    }
+  }
+}
 ```
 
 ---
 
-## Uso como Biblioteca
+## Uso
 
-```python
-from codeshield import verify_generated_code
+### analyze_prompt
 
-codigo_generado = """
-import pandas as pd
-from pandas import data_frame  # typo!
-
-arr.sumArray()  # typo!
-my_list.count_items()  # typo!
-"""
-
-errores = verify_generated_code(codigo_generado, "python")
-# → [
-#     "Línea 3: 'data_frame' no existe en 'pandas'. ¿Quisiste decir 'DataFrame'?",
-#     "Línea 5: El método 'sumArray()' no existe. ¿Quisiste decir 'sum()'?",
-#     "Línea 6: El método 'count_items()' no existe. ¿Quisiste decir 'count()'?"
-# ]
+```typescript
+// Analiza un prompt antes de generar código
+const result = await codeshield.analyze_prompt({
+  prompt: "Quiero usar pandas para procesar datos y crear un DataFrame",
+  language: "python"
+});
+// → { intended_imports: ["pandas"], intended_functions: ["DataFrame"], warnings: [] }
 ```
 
-### auto_fix
+### verify_code
 
-```python
-from codeshield import auto_fix
-
-codigo = """
-from pandas import data_frame
-arr.sumArray()
-"""
-fijo = auto_fix(codigo, "errors", "python")
-print(fijo)
-# → {
-#     "from pandas import DataFrame",
-#     "arr.sum()"
-# }
+```typescript
+// Verifica código generado
+const errors = await codeshield.verify_code({
+  code: `from pandas import data_frame
+arr.sumArray()`,
+  language: "python"
+});
+// → ["Línea 1: 'data_frame' no existe en 'pandas'. ¿Quisiste decir 'DataFrame'?",
+//    "Línea 2: El método 'sumArray()' no existe. ¿Quisiste decir 'sum()'?"]
 ```
 
-### index_codebase
+### index_project
 
-```python
-from codeshield import index_codebase
-
-index = index_codebase("/path/to/project", ["python"])
-print(index["classes"])   # ['User', 'Product', 'Order']
-print(index["functions"]) # ['validate_email', 'process_order']
+```typescript
+// Indexa el proyecto para referencias precisas
+const index = await codeshield.index_project({
+  directory: "/path/to/project",
+  languages: "python,typescript"
+});
+// → { classes: ["User", "Product"], functions: ["validate_email"], methods: {}, imports: ["pandas"] }
 ```
 
 ---
 
 ## Configuración
 
-### `.codeshield/codeshield.yaml`
+### `.codeshield.yaml` (local, no sube a GitHub)
 
 ```yaml
 detection:
   languages:
     - python
+    - javascript
   auto_fix: true
-  strict_mode: false
   patterns:
     imports: true
     functions: true
     classes: true
     syntax: true
-    logic: false  # futuro
 
 index:
-  include:
-    - src/
-    - lib/
   exclude:
-    - node_modules/
-    - venv/
-    - __pycache__/
+    - node_modules
+    - venv
+    - dist
 ```
-
-> ⚠️ Este archivo NO se sube a GitHub (ya está en `.gitignore`)
-
----
-
-## Roadmap
-
-```
-v0.1.0  → PRE-ALPHA (setup) ✅
-v0.2.0  → ALPHA (detection engines) ✅
-v0.3.0  → ALPHA (MCP server, 149 tests) ✅
-v1.0.0  → STABLE (primera versión producción)
-v1.1+   → Expansión multi-lenguaje
-v2.0    → Detección lógica/seguridad
-```
-
-[Ver roadmap completo →](docs/ROADMAP.md)
 
 ---
 
@@ -192,10 +177,7 @@ v2.0    → Detección lógica/seguridad
 |-----------|-------------|
 | [SPEC.md](SPEC.md) | Especificación técnica completa |
 | [docs/ROADMAP.md](docs/ROADMAP.md) | Features futuras y timeline |
-| [docs/VERSION-GUIDE.md](docs/VERSION-GUIDE.md) | Control de versiones |
-| [docs/quickstart.md](docs/quickstart.md) | Guía de inicio rápido |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Cómo contribuir |
-| [CLAUDE.md](CLAUDE.md) | Contexto para desarrollo (TDD workflow) |
+| [CLAUDE.md](CLAUDE.md) | Contexto para desarrollo |
 | [CHANGELOG.md](CHANGELOG.md) | Historial de cambios |
 
 ---
@@ -212,6 +194,4 @@ MIT License - ver [LICENSE](LICENSE) para detalles.
 
 ---
 
-**Hecho con ❤️ por la comunidad CodeShield**
-
-[![GitHub stars](https://img.shields.io/github/stars/yourusername/codeshield-mcp?style=social)](https://github.com/yourusername/codeshield-mcp/stargazers)
+**CodeShield MCP - Zero alucinaciones de código**

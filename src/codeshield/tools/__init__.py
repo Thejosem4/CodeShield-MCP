@@ -1,1 +1,0 @@
-# Tools module - MCP tools implementations

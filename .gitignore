@@ -30,3 +30,6 @@ build/
 
 # MCP specific
 .mcp/
+
+# Python implementation (deprecated - use TypeScript/src instead)
+src-python/

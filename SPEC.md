@@ -4,7 +4,7 @@
 
 **Name:** CodeShield MCP
 **Type:** MCP Server (Model Context Protocol)
-**Framework:** MCP Python SDK
+**Framework:** TypeScript + Node.js + `@modelcontextprotocol/sdk`
 **Purpose:** Prevenir alucinaciones del LLM antes de que genere código, ahorrar tokens y hacer más efectivos los cambios de Claude Code.
 
 ---
@@ -226,4 +226,5 @@ detection:
 
 ---
 
-*Last updated: 2026-04-04*
+*Last updated: 2026-04-06*
+*Nota: Implementación migrada de Python a TypeScript (src/ = TypeScript, src-python/ = legacy)*
