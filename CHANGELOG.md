@@ -7,6 +7,56 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.4.0] - 2026-04-07 - ALPHA
+
+### Added
+- ✅ `verifyAndFix()` - Función que verifica y corrige código automáticamente
+- ✅ `auto_fix` parameter en `verify_code` tool - aplica fixes automáticamente
+- ✅ `src/src/cache.ts` - Sistema de cache en memoria para index de proyectos
+  - `getCachedIndex()`, `setCachedIndex()`, `invalidateIndex()`, `getCacheStats()`
+  - TTL configurable (default 5 min)
+- ✅ Resource templates registrados:
+  - `codebase://index/{directory}` - Índice de funciones, clases, imports
+  - `codebase://index-list` - Lista de todos los índices cacheados
+- ✅ Motor de detección JavaScript (`src/src/detection/javascript.ts`)
+  - Stdlib completo: console, Math, JSON, Array, Object, String, Map, Set, Promise, etc.
+  - Detección de typos en métodos JS
+  - Detección de errores de sintaxis (paréntesis, llaves, corchetes, comillas desbalanceados)
+  - `extractJSImports()` con soporte para ES modules y CommonJS
+  - Patrones de módulos Node.js (fs, path, os, http, etc.)
+- ✅ Motor de detección TypeScript (`src/src/detection/typescript.ts`)
+  - Extiende el motor de JavaScript
+  - Detección de types, interfaces, enums, generics
+  - Warnings para uso de `: any`
+- ✅ Detección de frameworks en `analyzePrompt()`
+  - Django, Flask, FastAPI, React, Next.js, Node.js, Express, NestJS
+  - TypeScript, Pytest, Jest, Playwright, SQLAlchemy, Prisma
+- ✅ Detección de intenciones en `analyzePrompt()`
+  - database, api, testing, auth, devops, frontend, backend
+
+### Changed
+- 🔄 `analyzePrompt()` ahora retorna `detected_frameworks` y `detected_intentions`
+- 🔄 `AnalysisResult` interface expandida con campos opcionales para frameworks/intentions
+
+### Security
+- 🛡️ Path traversal protection en `indexProject()` - usa `path.resolve()` + containment check
+- 🛡️ Regex injection protection en `extractJSImports()` - escapa metacaracteres
+- 🛡️ Input size limits - `MAX_INPUT_SIZE = 1MB` en todos los Zod schemas
+
+### Technical Details
+
+**Nuevos archivos:**
+```
+src/src/cache.ts                              # Cache system
+src/src/detection/javascript.ts                # JS detection (~370 LOC)
+src/src/detection/typescript.ts               # TS detection (~160 LOC)
+```
+
+**Dependencias:**
+- `zod` ^4.3.6 (ya existente)
+
+---
+
 ## [0.3.0] - 2026-04-06 - ALPHA
 
 ### Changed
@@ -84,4 +134,4 @@ src/
 
 ---
 
-*Last updated: 2026-04-06*
+*Last updated: 2026-04-07*

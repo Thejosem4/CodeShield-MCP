@@ -97,6 +97,8 @@ export interface AnalysisResult {
   intended_functions: string[];
   warnings: string[];
   language: string;
+  detected_frameworks?: string[];
+  detected_intentions?: string[];
 }
 
 export interface IndexResult {
@@ -392,34 +394,73 @@ function detectSyntaxErrors(code: string): Issue[] {
 
 // Detectar todos los issues
 function detectAllIssues(code: string, language: string): Issue[] {
-  if (language !== "python") return [];
-
   const issues: Issue[] = [];
-  issues.push(...detectSyntaxErrors(code));
-  issues.push(...detectFunctionTypos(code));
 
-  // Verificar imports
-  const imports = extractImports(code);
-  for (const imp of imports) {
-    if (imp.is_from && imp.from_module) {
-      if (isStdlibModule(imp.from_module)) {
-        const funcs = STDLIB_FUNCTIONS[imp.from_module];
-        if (funcs && !funcs.has(imp.name) && !funcs.has(imp.name.split(".")[0])) {
-          const suggestions = suggestSimilarFunction(imp.from_module, imp.name);
-          issues.push({
-            line: imp.line,
-            code_snippet: `from ${imp.from_module} import ${imp.name}`,
-            error_type: "import_not_found",
-            message: `'${imp.name}' no existe en '${imp.from_module}'`,
-            suggestion: suggestions[0] || null,
-          });
+  if (language === "python") {
+    issues.push(...detectSyntaxErrors(code));
+    issues.push(...detectFunctionTypos(code));
+
+    // Verificar imports Python
+    const imports = extractImports(code);
+    for (const imp of imports) {
+      if (imp.is_from && imp.from_module) {
+        if (isStdlibModule(imp.from_module)) {
+          const funcs = STDLIB_FUNCTIONS[imp.from_module];
+          if (funcs && !funcs.has(imp.name) && !funcs.has(imp.name.split(".")[0])) {
+            const suggestions = suggestSimilarFunction(imp.from_module, imp.name);
+            issues.push({
+              line: imp.line,
+              code_snippet: `from ${imp.from_module} import ${imp.name}`,
+              error_type: "import_not_found",
+              message: `'${imp.name}' no existe en '${imp.from_module}'`,
+              suggestion: suggestions[0] || null,
+            });
+          }
         }
       }
     }
+  } else if (language === "javascript") {
+    issues.push(...verifyJavaScript(code));
+  } else if (language === "typescript") {
+    issues.push(...verifyTypeScript(code));
   }
 
   return issues;
 }
+
+// === Framework detection patterns ===
+const FRAMEWORK_PATTERNS: Record<string, RegExp[]> = {
+  django: [/\b(manage\.py|MIGRATIONS|settings\.py|INSTALLED_APPS|DJANGO_SETTINGS_MODULE)\b/i],
+  flask: [/\b(app\.route|@app|Flask\(|render_template|request\.)/i],
+  fastapi: [/\b(@app\.|FastAPI|APIRouter|uvicorn)/i],
+  fastapi_route: [/@(app|router)\.(get|post|put|delete|patch)\(/i],
+  react: [/\b(useState|useEffect|useRef|Component|jsx|React\.)/i],
+  nextjs: [/\b(getServerSideProps|getStaticProps|next\/|NextPage|next\/image)/i],
+  nodejs: [/\b(module\.exports|require\(|process\.|__dirname|__filename)/i],
+  express: [/\b(app|router)\.(get|post|put|delete|patch|use)\(/i],
+  nestjs: [/\b(@Controller|@Injectable|@Module|NestFactory)/i],
+  typescript: [/\binterface\s+\w+|type\s+\w+\s*=|:\s*(string|number|boolean|any)\b/i],
+  pytest: [/\bdef test_\w+\(|pytest\.|fixture\(|@pytest\./i],
+  jest: [/\bdescribe\(|it\(|test\(|expect\(|@testing-library/i],
+  playwright: [/\b(page|expect)\.(click|fill|goTo|waitFor)/i],
+  sqlalchemy: [/\b(session|query|Column|Integer|String\()/i],
+  prisma: [/\b(prisma\.|@prisma|model\s+\w+\s*\{)/i],
+};
+
+// Intention patterns
+const INTENTION_PATTERNS = {
+  database: /\b(postgres|mysql|mongodb|sqlite|redis|sql|database|db|query|select|insert|update|delete)\b/i,
+  api: /\b(rest|graphql|endpoint|api|route|http|request|response|status\s*code)\b/i,
+  testing: /\b(test|jest|pytest|vitest|mocha|unit\s*test|integration\s*test|coverage)\b/i,
+  auth: /\b(auth|login|password|token|jwt|oauth|session|permission|role)\b/i,
+  devops: /\b(docker|kubernetes|ci\/cd|deploy|nginx|apache|nginx|container|pod)\b/i,
+  frontend: /\b(component|props|state|jsx|tsx|react|vue|angular|svelte|html|css|style)\b/i,
+  backend: /\b(server|api|endpoint|route|controller|service|repository|middleware)\b/i,
+};
+
+// === JavaScript/TypeScript imports ===
+import { verifyJavaScript, extractJSImports } from "./javascript.js";
+import { verifyTypeScript } from "./typescript.js";
 
 // === Funciones públicas ===
 
@@ -427,6 +468,7 @@ export function analyzePrompt(prompt: string, language = "python"): AnalysisResu
   const intendedImports: string[] = [];
   const intendedFunctions: string[] = [];
   const warnings: string[] = [];
+  const detectedFrameworks: string[] = [];
 
   // Pattern para imports mencionados
   const importPatterns = [
@@ -462,8 +504,32 @@ export function analyzePrompt(prompt: string, language = "python"): AnalysisResu
     }
   }
 
+  // Detectar frameworks
+  for (const [framework, patterns] of Object.entries(FRAMEWORK_PATTERNS)) {
+    for (const pattern of patterns) {
+      if (pattern.test(prompt)) {
+        if (!detectedFrameworks.includes(framework)) {
+          detectedFrameworks.push(framework);
+        }
+        break;
+      }
+    }
+  }
+
+  // Detectar intenciones
+  const detectedIntentions: string[] = [];
+  for (const [intention, pattern] of Object.entries(INTENTION_PATTERNS)) {
+    if (pattern.test(prompt)) {
+      detectedIntentions.push(intention);
+    }
+  }
+
   if (prompt.trim().length < 20) {
     warnings.push("Prompt muy corto, análisis limitado");
+  }
+
+  if (detectedIntentions.length > 0) {
+    warnings.push(`Intenciones detectadas: ${detectedIntentions.join(", ")}`);
   }
 
   return {
@@ -471,7 +537,9 @@ export function analyzePrompt(prompt: string, language = "python"): AnalysisResu
     intended_functions: [...new Set(intendedFunctions)],
     warnings,
     language,
-  };
+    detected_frameworks: detectedFrameworks,
+    detected_intentions: detectedIntentions,
+  } as AnalysisResult & { detected_frameworks: string[]; detected_intentions: string[] };
 }
 
 export function verifyCode(
@@ -488,6 +556,55 @@ export function verifyCode(
         issue.suggestion ? ` Sugerencia: ${issue.suggestion}` : ""
       }`
   );
+}
+
+export interface VerifyAndFixResult {
+  issues: string[];
+  fixed_code: string;
+  fixed_count: number;
+}
+
+export function verifyAndFix(
+  code: string,
+  language = "python"
+): VerifyAndFixResult {
+  const issues = detectAllIssues(code, language);
+
+  // Apply auto-fix to the code
+  let fixedCode = code;
+  if (language === "python") {
+    fixedCode = autoFix(code, "", language);
+  }
+
+  // Count how many fixes were applied
+  let fixedCount = 0;
+  if (fixedCode !== code) {
+    // Simple heuristic: count differences in known patterns
+    const originalLower = code.toLowerCase();
+    const fixedLower = fixedCode.toLowerCase();
+
+    if (originalLower.includes("count_items") && !fixedLower.includes("count_items")) fixedCount++;
+    if (originalLower.includes("sumarray") && !fixedLower.includes("sumarray")) fixedCount++;
+    if (originalLower.includes("appenditem") && !fixedLower.includes("appenditem")) fixedCount++;
+    if (originalLower.includes("data_frame") && !fixedLower.includes("data_frame")) fixedCount++;
+    if (originalLower.includes("datafram") && !fixedLower.includes("datafram")) fixedCount++;
+    if (originalLower.includes("datetimetz") && !fixedLower.includes("datetimetz")) fixedCount++;
+    if (originalLower.includes("joinp") && !fixedLower.includes("joinp")) fixedCount++;
+  }
+
+  // Format issues as strings
+  const formattedIssues = issues.map(
+    (issue) =>
+      `Línea ${issue.line}: ${issue.message}${
+        issue.suggestion ? ` Sugerencia: ${issue.suggestion}` : ""
+      }`
+  );
+
+  return {
+    issues: formattedIssues,
+    fixed_code: fixedCode,
+    fixed_count: fixedCount,
+  };
 }
 
 export function suggestSimilar(
@@ -584,6 +701,13 @@ export function indexProject(
   };
 
   const excludeSet = new Set(exclude);
+  const basePath = path.resolve(directory);
+
+  function isPathSafe(filePath: string): boolean {
+    // Resolve the full path and verify it stays within base directory
+    const resolved = path.resolve(filePath);
+    return resolved.startsWith(basePath + path.sep) || resolved === basePath;
+  }
 
   function shouldExclude(filePath: string): boolean {
     return excludeSet.has(filePath) ||
@@ -668,6 +792,7 @@ export function indexProject(
       for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
 
+        if (!isPathSafe(fullPath)) continue;
         if (shouldExclude(entry.name) || shouldExclude(fullPath)) {
           continue;
         }

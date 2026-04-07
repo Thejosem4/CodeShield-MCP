@@ -68,13 +68,14 @@ detection:
 
 ### 5.1 Core Features
 
-| Feature | Descripción | Prioridad |
-|---------|-------------|-----------|
-| `pre_analyze_prompt` | Analiza el prompt del usuario antes de generar código | ALTA |
-| `verify_generated_code` | Verifica código generado contra el codebase real | ALTA |
-| `suggest_similar` | Sugiere funciones/clases válidas similares a las mal escritas | MEDIA |
-| `auto_fix` | Corrige automáticamente errores detectables | ALTA |
-| `index_codebase` | Indexa el codebase del usuario para referencias precisas | MEDIA |
+| Feature | Descripción | Prioridad | Status |
+|---------|-------------|-----------|--------|
+| `analyze_prompt` | Analiza el prompt del usuario antes de generar código | ALTA | ✅ |
+| `verify_code` | Verifica código generado contra el codebase real | ALTA | ✅ |
+| `suggest_similar` | Sugiere funciones/clases válidas similares a las mal escritas | MEDIA | ✅ |
+| `fix_code` | Corrige automáticamente errores detectables | ALTA | ✅ |
+| `index_project` | Indexa el codebase del usuario para referencias precisas | MEDIA | ✅ |
+| `verifyAndFix()` | Verifica y corrige código en una sola llamada | ALTA | ✅ (v0.4.0) |
 
 ### 5.2 Auto-fix (Prioridad para comunidad)
 
@@ -88,7 +89,26 @@ from pandas import data_frame  # typo: no existe
 # Auto-fix: corrige a DataFrame
 ```
 
-### 5.3 Hooks Automáticos
+### 5.3 Resource Templates
+
+CodeShield expone índices de código via MCP resources:
+- `codebase://index/{directory}` - Índice de funciones, clases, imports de un directorio
+- `codebase://index-list` - Lista de índices cacheados
+
+### 5.4 Framework Detection
+
+`analyze_prompt()` detecta frameworks en el prompt:
+- **Backend:** Django, Flask, FastAPI, Express, NestJS
+- **Frontend:** React, Next.js
+- **Testing:** Pytest, Jest, Playwright
+- **ORM:** SQLAlchemy, Prisma
+
+### 5.5 Intention Detection
+
+`analyze_prompt()` detecta intenciones del código:
+- `database`, `api`, `testing`, `auth`, `devops`, `frontend`, `backend`
+
+### 5.6 Hooks Automáticos
 
 Integración en `CLAUDE.md` del proyecto:
 ```markdown
@@ -129,30 +149,32 @@ Integración en `CLAUDE.md` del proyecto:
 
 ## 7. Tools
 
-### 7.1 `pre_analyze_prompt`
-- **Input:** Prompt del usuario
-- **Output:** Análisis de intenciones de código
-- **Acción:** Detecta qué librerías/funciones planea usar
+### 7.1 `analyze_prompt`
+- **Input:** Prompt del usuario, language (python|javascript|typescript)
+- **Output:** `{ intended_imports, intended_functions, warnings, detected_frameworks, detected_intentions }`
+- **Acción:** Detecta qué librerías/funciones planea usar y qué frameworks/intenciones tiene
 
-### 7.2 `verify_generated_code`
-- **Input:** Código generado
+### 7.2 `verify_code`
+- **Input:** Código generado, language, code_base_index (opcional), auto_fix (opcional)
 - **Output:** Lista de problemas detectados
-- **Acción:** Fallback si prevention no funcionó
+- **Acción:** Verifica código contra stdlib y codebase indexado
+- **Soporta:** Python, JavaScript, TypeScript
 
 ### 7.3 `suggest_similar`
-- **Input:** Nombre mal escrito
-- **Output:** Lista de matches similares en el codebase
-- **Acción:** Helper para auto-fix
+- **Input:** Nombre mal escrito, context (módulo opcional), language
+- **Output:** Lista de matches similares en el stdlib
+- **Acción:** Helper para encontrar correcciones
 
-### 7.4 `auto_fix`
-- **Input:** Código con errores
+### 7.4 `fix_code`
+- **Input:** Código con errores, error (opcional), language
 - **Output:** Código corregido
-- **Acción:** Solo para errores 100% detectables
+- **Acción:** Solo para errores 100% detectables (typos de métodos)
 
-### 7.5 `index_codebase`
-- **Input:** Directorio del proyecto
+### 7.5 `index_project`
+- **Input:** Directorio del proyecto, languages, exclude, reindex, cache_ttl
 - **Output:** Índice de funciones/clases/imports disponibles
-- **Acción:** Construye base de referencia
+- **Acción:** Construye base de referencia con cache en memoria
+- **Protección:** Path traversal segura con `path.resolve()` containment check
 
 ---
 
@@ -160,26 +182,24 @@ Integración en `CLAUDE.md` del proyecto:
 
 ```bash
 # Clone
-git clone https://github.com/yourusername/codeshield-mcp.git
-cd codeshield-mcp
+git clone https://github.com/Thejosem4/CodeShield-MCP.git
+cd CodeShield-MCP
 
-# Install
-pip install --upgrade mcp
-pip install -r requirements.txt
+# Install dependencies
+cd src
+npm install
 
-# Configure in CLAUDE.md
+# Build
+npm run build
+
+# Configure MCP in your Claude Code settings
 ```
 
 ---
 
 ## 9. Configuration
 
-### 9.1 Global (environment)
-```bash
-export CODESHIELD_API_KEY="your-key"
-```
-
-### 9.2 Local (`.codeshield.yaml` - no commit)
+### 9.1 Local (`.codeshield.yaml` - no commit)
 ```yaml
 detection:
   languages:
@@ -226,5 +246,5 @@ detection:
 
 ---
 
-*Last updated: 2026-04-06*
+*Last updated: 2026-04-07*
 *Nota: Implementación migrada de Python a TypeScript (src/ = TypeScript, src-python/ = legacy)*
