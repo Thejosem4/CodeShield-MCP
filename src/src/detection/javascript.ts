@@ -240,7 +240,7 @@ function detectJSSyntaxErrors(code: string): Issue[] {
     // Llaves desbalanceadas
     const openBrace = (trimmed.match(/\{/g) || []).length;
     const closeBrace = (trimmed.match(/\}/g) || []).length;
-    if (Math.abs(openBrace - closeBrace) > 1) {
+    if (Math.abs(openBrace - closeBrace) > 0) {
       issues.push({
         line: idx + 1,
         code_snippet: trimmed,
@@ -253,7 +253,7 @@ function detectJSSyntaxErrors(code: string): Issue[] {
     // Corchetes desbalanceados
     const openBracket = (trimmed.match(/\[/g) || []).length;
     const closeBracket = (trimmed.match(/\]/g) || []).length;
-    if (Math.abs(openBracket - closeBracket) > 1) {
+    if (Math.abs(openBracket - closeBracket) > 0) {
       issues.push({
         line: idx + 1,
         code_snippet: trimmed,
@@ -369,4 +369,24 @@ export function detectJSIssues(code: string): Issue[] {
  */
 export function verifyJavaScript(code: string): Issue[] {
   return detectJSIssues(code);
+}
+
+/**
+ * Aplicar correcciones de typos en código JavaScript
+ */
+export function fixJavaScript(code: string): string {
+  let fixed = code;
+
+  for (const [obj, typos] of Object.entries(JS_TYPOS)) {
+    for (const [typo, correction] of Object.entries(typos as Record<string, string>)) {
+      // Use regex with case-insensitive flag to handle JSON vs json, etc.
+      // Match object.typo where obj matches case-insensitively
+      const escapedTypo = typo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // Match the object name case-insensitively followed by . and the typo
+      const pattern = new RegExp(`${obj}\\.${escapedTypo}`, 'gi');
+      fixed = fixed.replace(pattern, `${obj}.${correction}`);
+    }
+  }
+
+  return fixed;
 }

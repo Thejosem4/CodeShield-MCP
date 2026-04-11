@@ -219,11 +219,30 @@ detection:
 
 ## 10. Roadmap
 
+### Estado Actual (v0.4.2)
+
+| Feature | Estado |
+|---------|--------|
+| Python/JS/TS: imports, funciones, classes | ✅ Implementado |
+| Auto-fix para errores comunes | ✅ Implementado |
+| Framework detection | ✅ Implementado |
+| Intention detection | ✅ Implementado |
+| Cache en memoria | ✅ Implementado |
+
+### Próximos Pasos
+
+| Versión | Feature | Descripción |
+|---------|---------|-------------|
+| v0.5.0 | **Publicar en npm** | `npm install -g codeshield-mcp` |
+| v0.6.0 | **Bin ejecutable** | `codeshield` en PATH |
+| v0.7.0 | **Auto-config Claude Code** | Integración automática |
+| v1.0.0 | **Release estable** | Primera versión producción |
+
+### Features Futuras (Post-v1.0)
+
 | Versión | Feature |
 |---------|---------|
-| v1.0 | Python/JS/TS: imports, funciones, classes |
-| v1.1 | Auto-fix para errores comunes |
-| v1.2 | Go, Rust, Java support |
+| v1.1 | Go, Rust, Java support |
 | v2.0 | Detección de lógica/algoritmos |
 | v2.1 | Integración con linters (pylint, eslint) |
 | v3.0 | AI-powered suggestions |

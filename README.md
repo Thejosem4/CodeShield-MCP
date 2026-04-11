@@ -5,21 +5,22 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/typescript-5.3-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/node-20+-green.svg)](https://nodejs.org/)
+[![npm](https://img.shields.io/badge/npm-v0.6.0-red.svg)](https://www.npmjs.com/package/codeshield-verify-mcp)
 
 ---
 
 ## ¿Qué es?
 
-CodeShield MCP es un servidor MCP (Model Context Protocol) que actúa como **primera línea de defensa** contra código generado incorrectamente por agentes LLM como Claude Code.
+CodeShield es un **servidor MCP y CLI** que actúa como primera línea de defensa contra código generado incorrectamente por agentes LLM como Claude Code.
 
 ### El Problema
 
 Cuando un LLM genera código, puede incluir:
-- ❌ Imports de funciones que no existen
-- ❌ Funciones con typos (`data_frame` en vez de `DataFrame`)
-- ❌ Métodos incorrectos (`.count_items()` en vez de `.count()`)
-- ❌ Clases mal nombradas (`.DatetimeTZ()` en vez de `.datetime()`)
-- ❌ Errores de sintaxis básicos
+- Imports de funciones que no existen
+- Funciones con typos (`data_frame` en vez de `DataFrame`)
+- Métodos incorrectos (`.count_items()` en vez de `.count()`)
+- Errores de sintaxis básicos
+- Dependencias con vulnerabilidades conocidas (CVEs)
 
 **Resultado:** Tokens perdidos en debugging, re-trabajo iterativo, frustración.
 
@@ -39,9 +40,16 @@ Cuando un LLM genera código, puede incluir:
 
 ## Estado Actual
 
-**Versión:** 0.4.0 (ALPHA)
+**Versión:** 0.6.0 (ALPHA) - [npm package](https://www.npmjs.com/package/codeshield-verify-mcp)
 
-### Herramientas Disponibles
+### Modos de Uso
+
+| Modo | Descripción |
+|------|-------------|
+| **MCP Server** | Integración con Claude Code, Claude CLI, Gemini CLI |
+| **CLI** | Comandos standalone para verificación directa |
+
+### Herramientas MCP
 
 | Herramienta | Descripción |
 |-------------|-------------|
@@ -50,31 +58,54 @@ Cuando un LLM genera código, puede incluir:
 | `suggest_similar_name` | Sugiere correcciones para typos |
 | `fix_code` | Corrige automáticamente errores |
 | `index_project` | Indexa proyecto con cache en memoria |
+| `audit_deps` | Audita dependencias contra CVEs conocidos |
+
+### Comandos CLI
+
+| Comando | Descripción |
+|---------|-------------|
+| `codeshield verify <file>` | Verificar archivo para alucinaciones |
+| `codeshield scan [dir]` | Escanear proyecto completo |
+| `codeshield explain <file>` | Explicar hallazgos |
+| `codeshield audit-deps <file>` | Auditar CVEs en requirements.txt |
+| `codeshield context save <name>` | Guardar contexto de codificación |
+| `codeshield context list` | Listar contextos guardados |
+| `codeshield serve` | Iniciar servidor MCP |
+| `codeshield --version` | Mostrar versión |
 
 ### Lenguajes Soportados
 
-- 🐍 **Python** - Soporte completo
-- 📜 **JavaScript** - Soporte completo (console, Math, JSON, Array, Object, etc.)
-- 🔷 **TypeScript** - Soporte completo (types, interfaces, enums, generics)
+- **Python** - Stdlib, pandas, numpy, Django, Flask, FastAPI
+- **JavaScript** - Node.js stdlib, console, Math, JSON, Array, Object
+- **TypeScript** - Types, interfaces, enums, generics, utility types
 
-### Features v0.4.0
+---
 
-- 🔧 **Auto-fix** - `verifyAndFix()` corrige typos automáticamente
-- 💾 **Cache** - Indexación en memoria con TTL configurable
-- 🧩 **Resource templates** - `codebase://index/{directory}` via MCP resources
-- 🏗️ **Framework detection** - Django, Flask, FastAPI, React, Next.js, Express, NestJS
-- 🎯 **Intention detection** - database, api, testing, auth, devops, frontend, backend
+## Características v0.6.0
+
+- **Auto-fix** - Corrige typos automáticamente (Python, JS, TS)
+- **Context Persistence** - Guardar/restaurar estado de codificación
+- **Dependency Audit** - Detecta CVEs en requirements.txt
+- **Project Scanner** - Escanea proyectos completos recursivamente
+- **Cache en memoria** - Indexación con TTL configurable
+- **Framework detection** - Django, Flask, FastAPI, React, Next.js, Express, NestJS, pandas, numpy, matplotlib
+- **Intention detection** - database, api, testing, auth, devops, frontend, backend
 
 ---
 
 ## Instalación
 
-### Prerrequisitos
+### Desde npm (recomendado)
 
-- Node.js 20+
-- npm 10+
+```bash
+# Instalación global
+npm install -g codeshield-verify-mcp
 
-### Pasos
+# O usar directamente con npx
+npx codeshield-verify-mcp
+```
+
+### Desde código fuente
 
 ```bash
 # Clonar
@@ -85,29 +116,36 @@ cd CodeShield-MCP
 cd src
 npm install
 
+# Build
+npm run build
+
 # Desarrollo (con hot-reload)
 npm run dev
-
-# Build para producción
-npm run build
 ```
 
 ### Configuración en Claude Code
 
-Agregar a `~/.mcp.json`:
+Agregar a tu config de Claude Desktop:
 
 ```json
 {
   "mcpServers": {
     "codeshield": {
-      "command": "cmd",
-      "args": [
-        "/c",
-        "npx",
-        "tsx",
-        "C:/Projects/CodeShield-MCP/src/src/server.ts"
-      ],
-      "cwd": "C:/Projects/CodeShield-MCP/src"
+      "command": "npx",
+      "args": ["codeshield-verify-mcp", "serve"]
+    }
+  }
+}
+```
+
+O si lo instalaste desde código fuente:
+
+```json
+{
+  "mcpServers": {
+    "codeshield": {
+      "command": "node",
+      "args": ["C:/Projects/CodeShield-MCP/src/dist/index.js", "serve"]
     }
   }
 }
@@ -115,87 +153,104 @@ Agregar a `~/.mcp.json`:
 
 ---
 
-## Uso
+## Uso CLI
 
-### analyze_prompt
+```bash
+# Verificar un archivo
+codeshield verify miarchivo.py
 
-```typescript
-// Analiza un prompt antes de generar código
-const result = await codeshield.analyze_prompt({
-  prompt: "Create a React component with FastAPI backend for user authentication",
-  language: "python"
-});
-// → {
-//   intended_imports: [],
-//   intended_functions: [],
-//   warnings: ["Intenciones detectadas: api, auth, frontend, backend"],
-//   detected_frameworks: ["fastapi", "react"],
-//   detected_intentions: ["api", "auth", "frontend", "backend"]
-// }
-```
+# Escanear proyecto completo
+codeshield scan ./src --extensions .ts,.js
 
-### verify_code
+# Output JSON para scripting
+codeshield verify miarchivo.py --json
 
-```typescript
-// Verifica código generado (soporta Python, JavaScript, TypeScript)
-const errors = await codeshield.verify_code({
-  code: `from pandas import data_frame
-arr.sumArray()`,
-  language: "python"
-});
-// → ["Línea 1: 'data_frame' no existe en 'pandas'. ¿Quisiste decir 'DataFrame'?",
-//    "Línea 2: El método 'sumArray()' no existe. ¿Quisiste decir 'sum()'?"]
+# Guardar contexto de codificación
+codeshield context save mi-sesion --files "src/app.py,src/utils.py" --notes "trabajando en auth"
 
-// JavaScript
-const jsErrors = await codeshield.verify_code({
-  code: `console.logg("Hello")`,
-  language: "javascript"
-});
-// → ["Línea 1: Posible typo 'logg' - ¿quisiste decir 'log'?"]
+# Listar contextos guardados
+codeshield context list
 
-// TypeScript
-const tsErrors = await codeshield.verify_code({
-  code: `const x: any = 5;`,
-  language: "typescript"
-});
-// → ["Línea 1: Uso de ': any' detectado. Considera usar 'unknown'"]
-```
-
-### index_project
-
-```typescript
-// Indexa el proyecto para referencias precisas
-const index = await codeshield.index_project({
-  directory: "/path/to/project",
-  languages: "python,typescript"
-});
-// → { classes: ["User", "Product"], functions: ["validate_email"], methods: {}, imports: ["pandas"] }
+# Auditar dependencias
+codeshield audit-deps requirements.txt
 ```
 
 ---
 
-## Configuración
+## Uso MCP
 
-### `.codeshield.yaml` (local, no sube a GitHub)
+```typescript
+// Analizar prompt
+const result = await codeshield.analyze_prompt({
+  prompt: "Create a FastAPI endpoint for user authentication",
+  language: "python"
+});
+// → { detected_frameworks: ["fastapi"], detected_intentions: ["api", "auth", "backend"] }
 
-```yaml
-detection:
-  languages:
-    - python
-    - javascript
+// Verificar código
+const errors = await codeshield.verify_code({
+  code: "from pandas import data_frame\narr.sumArray()",
+  language: "python"
+});
+// → ["Línea 1: 'data_frame' parece ser un typo. ¿Quisiste decir 'DataFrame'?"]
+
+// Verificar y auto-fix
+const result = await codeshield.verify_code({
+  code: "arr.sumArray()",
+  language: "javascript",
   auto_fix: true
-  patterns:
-    imports: true
-    functions: true
-    classes: true
-    syntax: true
+});
+// → { issues: [...], fixed_code: "arr.sum()", fixed_count: 1 }
 
-index:
-  exclude:
-    - node_modules
-    - venv
-    - dist
+// Auditar dependencias
+const audit = await codeshield.audit_deps({
+  requirements: "flask<2.0\ndjango>=3.2\nrequests"
+});
 ```
+
+---
+
+## API Reference
+
+### MCP Tools
+
+| Tool | Input | Output |
+|------|-------|--------|
+| `analyze_prompt` | `prompt: string`, `language?: string` | `AnalysisResult` con frameworks e intenciones |
+| `verify_code` | `code: string`, `language?: string`, `auto_fix?: boolean` | Array de errores o `VerifyAndFixResult` |
+| `suggest_similar_name` | `name: string`, `context?: string`, `language?: string` | Array de sugerencias |
+| `fix_code` | `code: string`, `error?: string`, `language?: string` | Código corregido |
+| `index_project` | `directory: string`, `languages?: string`, `exclude?: string` | `IndexResult` con classes, functions, imports |
+| `audit_deps` | `requirements: string` | Array de `AuditResult` con CVEs |
+| `cache_stats` | (vacío) | Estadísticas del cache |
+| `cache_clear` | (vacío) | Limpia el cache |
+
+### MCP Resources
+
+| Resource | URI | Descripción |
+|----------|-----|-------------|
+| `codebase-index` | `codeshield://index/{directory}` | Índice de un proyecto |
+| `codebase-index-list` | `codeshield://index/list` | Lista de índices cacheados |
+
+---
+
+## Seguridad
+
+### Path Traversal Protection
+
+`scanProject()` y `indexProject()` validan que las rutas no escapen del directorio base.
+
+### CVE Database
+
+Audit de dependencias contra database de CVEs conocidos:
+- pyyaml, requests, flask, django, jinja2, urllib3, pillow, cryptography, paramiko, setuptools
+- numpy, pandas, openssl
+
+### Input Validation
+
+- Límite de 1MB para todos los inputs
+- Validación de rutas con `path.resolve()`
+- Escaping de metacaracteres en regex
 
 ---
 
@@ -204,15 +259,19 @@ index:
 | Documento | Descripción |
 |-----------|-------------|
 | [SPEC.md](SPEC.md) | Especificación técnica completa |
-| [docs/ROADMAP.md](docs/ROADMAP.md) | Features futuras y timeline |
-| [docs/DEVELOPMENT-PLAN.md](docs/DEVELOPMENT-PLAN.md) | Plan de desarrollo |
 | [CHANGELOG.md](CHANGELOG.md) | Historial de cambios |
+| [docs/ROADMAP.md](docs/ROADMAP.md) | Features futuras y timeline |
 
 ---
 
-## Seguridad
+## Roadmap
 
-Si descubres una vulnerabilidad de seguridad, por favor reporta a través de **[GitHub Issues](../../issues/new?template=bug_report.yml)** con la etiqueta `security`.
+| Fase | Descripción | Estado |
+|------|-------------|--------|
+| **v0.6.0** | CLI + Context Persistence + Audit Deps | ✅ Listo |
+| **v0.7.0** | Sandbox execution para código real | 🔲 Pendiente |
+| **v0.8.0** | REST API backend opcional | 🔲 Pendiente |
+| **v1.0.0** | Release estable | 🔲 Pendiente |
 
 ---
 
@@ -222,4 +281,4 @@ MIT License - ver [LICENSE](LICENSE) para detalles.
 
 ---
 
-**CodeShield MCP - Zero alucinaciones de código**
+**CodeShield - Zero alucinaciones de código**

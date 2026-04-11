@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Test files in src/ directory
+src/*.test.ts
+src/tests/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Python (if any)
+__pycache__/
+*.pyc
+.venv/
+
+# Local files
+test_code.py

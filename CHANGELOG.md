@@ -7,6 +7,111 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.6.0] - 2026-04-11 - ALPHA
+
+### Added
+- ✅ **CLI Module** (`src/cli.ts`) - Nuevo módulo CLI con comandos:
+  - `verify <file>` - Verificar archivo para alucinaciones
+  - `scan [directory]` - Escanear proyecto completo
+  - `explain <file>` - Explicar hallazgos
+  - `audit-deps [requirements.txt]` - Auditar CVEs en dependencias
+  - `context save/list/restore/delete` - Persistencia de contexto de codificación
+  - `serve` - Iniciar servidor MCP
+- ✅ **Context Persistence** (`src/context-store.ts`) - Sistema de guardado de contexto
+  - `saveContext()`, `listContexts()`, `getContext()`, `deleteContext()`
+  - `exportContexts()`, `importContexts()` para backup/restore
+  - Almacenamiento en `~/.codeshield/context-store.json`
+- ✅ **Audit Dependencies** (`src/audit-deps.ts`) - Auditoría de CVEs
+  - Database de CVEs conocidos (10+ packages)
+  - Parser multi-operador (>=, <=, ==, !=, <, >, ~=)
+- ✅ **scanProject()** - Nueva función para escanear proyectos completos
+- ✅ **Entrada unificada** (`src/index.ts`) - Detecta CLI vs MCP mode automáticamente
+
+### Changed
+- 🔄 Version bump de 0.5.0 → 0.6.0
+- 🔄 Descripción actualizada: "MCP server and CLI"
+- 🔄 Bin entry point cambiado a `dist/index.js` para soportar CLI + MCP
+
+### Detection Improvements
+- **TypeScript**: Utility types expandidos, detección de enum/namespace vacío, unsafe `any` usage
+- **Python**: Mutable default arguments, bare except, tabs vs spaces mezclados, más typos Django/Flask/FastAPI
+
+### Security Fixes
+- 🛡️ `audit-deps.ts`: Parser multi-operador, CVE database expandido
+- 🛡️ `context-store.ts`: Try-catch para JSON corrupto, validación de inputs, backup automático
+
+### Tests
+- ✅ 85 tests pasando (reducido de 124 por consolidación de archivos .test.js en dist removidos)
+
+---
+
+## [0.5.0] - 2026-04-11 - ALPHA
+
+### Added
+- ✅ `.npmignore` - Excluye archivos de desarrollo (src/, tests/, *.test.ts, tsconfig.json, etc.)
+- ✅ `files` field en package.json - Define archivos exactos a incluir en el paquete npm
+- ✅ `prepublishOnly` script - Build automático antes de publicar
+- ✅ README.md y LICENSE en el paquete npm
+
+### Changed
+- 🔄 Version bump de 0.4.0 → 0.5.0
+- 🔄 Descripción del paquete expandida
+- 🔄 Keywords agregados: python, javascript
+- 🔄 Scripts de test: de `echo 'No tests yet'` → `vitest run`
+
+### Fixed
+- 🐛 Tests rotos (6 tests que fallaban) - threshold de detección corregido
+- 🐛 Regex de jest malformado
+- 🐛 Mensaje de "Generics desbalanceados" estandarizado
+
+### Tests
+- ✅ 124 tests pasando (incluye 39 tests de v0.4.x)
+
+---
+
+## [0.4.2] - 2026-04-10 - ALPHA
+
+### Fixed
+- 🐛 `pd.data_frame()` ahora se detecta como typo (antes no se detectaba)
+- 🐛 `detectTyposFromKnown()` - nueva función que usa KNOWN_TYPOS para verificar
+- 🐛 Framework detection: `sqlalchemy` ya no da falsos positivos
+- ✅ Framework detection: `pandas`, `numpy`, `matplotlib` agregados
+- ✅ Intention detection: `data_processing`, `file_io` agregados
+
+---
+
+## [0.4.1] - 2026-04-10 - ALPHA
+
+### Added
+- ✅ `fixJavaScript()` - Nueva función para corregir typos en JavaScript
+  - Aplica correcciones usando `JS_TYPOS` (console.logg, json.stringfy, etc.)
+  - Case-insensitive matching
+- ✅ `fixTypeScript()` - Nueva función para TypeScript
+  - Hereda correcciones de JavaScript
+- ✅ `KNOWN_TYPOS` expandido de 7 a ~50+ typos comunes en Python
+  - Built-in functions: print, len, sum, count, append, etc.
+  - Data structures: DataFrame, deque, datetime, Counter
+  - Pandas/numpy: pandas, numpy, array
+  - String methods: split, strip, lower, upper
+  - Control flow: return, import, class, def, except
+
+### Changed
+- 🔄 `autoFix()` ahora usa `KNOWN_TYPOS` para correcciones
+- 🔄 `verifyAndFix()` ahora detecta lenguaje y aplica fix apropiado
+  - Python: `autoFix()`
+  - JavaScript: `fixJavaScript()`
+  - TypeScript: `fixTypeScript()`
+
+### Fixed
+- 🛡️ Regex escaping en fix patterns
+
+### Tests
+- ✅ `src/detection/javascript.test.ts` - 11 tests para fixJavaScript
+- ✅ `src/detection/typescript.test.ts` - 4 tests para fixTypeScript
+- ✅ `src/detection/index.test.ts` - 24 tests para autoFix y verifyAndFix
+
+---
+
 ## [0.4.0] - 2026-04-07 - ALPHA
 
 ### Added

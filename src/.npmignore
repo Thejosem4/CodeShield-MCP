@@ -1,0 +1,33 @@
+# Source and dev files
+src/
+tests/
+*.test.ts
+vitest.config.ts
+tsconfig.json
+
+# Development artifacts
+.git/
+.github/
+docs/
+*.md
+CONTRIBUTING.md
+
+# Build artifacts - exclude test files from dist
+tsconfig.tsbuildinfo
+dist/**/*.test.*
+dist/**/*.test.js
+dist/**/*.test.d.ts
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*

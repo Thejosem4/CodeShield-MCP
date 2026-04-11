@@ -1,18 +1,26 @@
 {
-  "name": "codeshield-mcp",
-  "version": "0.4.0",
-  "description": "MCP server that prevents LLM hallucinations before code generation",
+  "name": "codeshield-verify-mcp",
+  "version": "0.6.0",
+  "description": "MCP server and CLI that prevents LLM hallucinations by verifying code against known libraries and frameworks",
   "type": "module",
-  "main": "dist/server.js",
-  "types": "dist/server.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
-    "codeshield": "./dist/server.js"
+    "codeshield": "./dist/index.js"
   },
+  "files": [
+    "dist/",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
-    "build": "tsc",
-    "start": "node ./dist/server.js",
-    "dev": "tsx src/server.ts",
-    "test": "echo 'No tests yet' && exit 0"
+    "build": "tsc && npm run remove-test-artifacts",
+    "remove-test-artifacts": "node -p \"const fs=require('fs'),path=require('path');function r(d){fs.readdirSync(d).forEach(f=>{const p=path.join(d,f);fs.statSync(p).isDirectory()?r(p):(f.includes('.test.')&&fs.rmSync(p,{force:true}))})};r('dist')\"",
+    "start": "node ./dist/index.js",
+    "dev": "tsx src/index.ts",
+    "cli": "node ./dist/cli.js",
+    "test": "vitest run",
+    "prepublishOnly": "npm run build"
   },
   "keywords": [
     "mcp",
@@ -20,14 +28,20 @@
     "llm",
     "hallucination",
     "code-analysis",
-    "typescript"
+    "typescript",
+    "python",
+    "javascript"
   ],
   "author": "Thejosem4",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Thejosem4/CodeShield-MCP.git"
+    "url": "git+https://github.com/Thejosem4/CodeShield-MCP.git"
   },
+  "bugs": {
+    "url": "https://github.com/Thejosem4/CodeShield-MCP/issues"
+  },
+  "homepage": "https://github.com/Thejosem4/CodeShield-MCP#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
     "zod": "^4.3.6"

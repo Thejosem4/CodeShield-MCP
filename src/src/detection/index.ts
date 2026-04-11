@@ -61,18 +61,124 @@ const STDLIB_FUNCTIONS: Record<string, Set<string>> = {
   ]),
 };
 
-// Known typos
+// Known typos - expanded coverage
 const KNOWN_TYPOS: Record<string, string[]> = {
-  print: ["prin", "prnt"],
-  len: ["ln", "lne"],
-  sum: ["sumArray"],
-  count: ["countt"],
-  append: ["appendItem"],
-  join: ["joinp"],
-  listdir: ["listdirs"],
-  DataFrame: ["data_frame", "datafram"],
-  deque: ["dequee"],
-  datetime: ["DatetimeTZ"],
+  // Built-in functions
+  print: ["prin", "prnt", "printo", "printt"],
+  len: ["ln", "lne", "lenght", "lengh", "lentgh"],
+  sum: ["sumArray", "summ", "sump"],
+  count: ["countt", "count_items", "counnt", "countt"],
+  append: ["appendItem", "apppend", "addItem", "add_item"],
+  join: ["joinp", "joinn", "concatenate", "joinn"],
+  listdir: ["listdirs", "list_directories"],
+  sorted: ["sortted", "sortt"],
+  reverse: ["revese", "reversee"],
+
+  // Data structures
+  DataFrame: ["data_frame", "datafram", "dataFrame", "dataframee"],
+  deque: ["dequee", "dequeue"],
+  datetime: ["DatetimeTZ", "dateTime", "datetimee", "datetim"],
+  Counter: ["counterr", "countter"],
+  defaultdict: ["defaultdicct", "defaultdictt"],
+
+  // Common pandas/numpy
+  pandas: ["pandass", "panas"],
+  numpy: ["numby", "numpyy", "nump"],
+  array: ["arry", "arraay"],
+
+  // String methods
+  split: ["spllit", "splite", "splitt"],
+  strip: ["stip", "stripp"],
+  lower: ["lowerr", "toLowerCase"],
+  upper: ["uperr", "toUpperCase"],
+  replace: ["replase", "replacce"],
+  format: ["formatt", "formate"],
+
+  // File operations
+  open: ["opne", "openn", "opeen"],
+  read: ["reaad", "readd", "readd"],
+  write: ["writte", "writee", "writte"],
+  close: ["clsoe", "closee"],
+
+  // Control flow
+  return: ["retur", "retunn"],
+  import: ["impor", "importt", "imort"],
+  class: ["claass", "classs"],
+  def: ["deff", "ddef"],
+  except: ["exceppt", "exceptt"],
+  raise: ["raisse", "raisee"],
+  yield: ["yeild", "yielld"],
+  lambda: ["lamda", "lambd"],
+
+  // Dict operations
+  get: ["gett", "dget"],
+  keys: ["keeys", "keyss"],
+  values: ["valuess", "values"],
+  items: ["itemss", "iteems"],
+  update: ["updade", "uppdate"],
+
+  // Loop operations
+  range: ["ranget", "ragne"],
+  enumerate: ["enumarate", "enumerat"],
+  zip: ["zipp", "ziip"],
+
+  // Math operations
+  sqrt: ["sqrtt", "sqrt"],
+  abs: ["abss", "abbs"],
+  pow: ["poww", "poow"],
+  max: ["maxx", "maax"],
+  min: ["minn", "miin"],
+
+  // Type operations
+  isinstance: ["isintance", "isinstace"],
+  issubclass: ["issublass", "issubcalss"],
+
+  // Common typos in code
+  True: ["Truue", "Ture", "Treu"],
+  False: ["Fase", "Faluse", "Flase"],
+  None: ["Nonde", "Noen", "Null"],
+  self: ["selff", "slf", "slef"],
+
+  // Django framework typos
+  "models.Model": ["model.Model", "modelsmodel", "models.models"],
+  "request.GET": ["requestget", "request.Get", "request.get"],
+  "request.POST": ["requestpost", "request.Post", "request.post"],
+  "django.urls": ["django.url", "djangourls", "django.urls import"],
+  "ModelForm": ["modelfForm", "model_form", "Modelform"],
+  "related_name": ["relatedname", "related_name"],
+  "on_delete": ["ondelete", "on_delete"],
+  "null=True": ["null_true", "null=>True"],
+  "blank=True": ["blanktrue", "blank=>True"],
+
+  // Flask framework typos
+  "render_template": ["renderTemplate", "render_template", "renderTempate"],
+  "request.args": ["requestargs", "request.QueryDict"],
+  "session['": ["session[", "sesion['", "session.get("],
+  "flash(" : ["falsh(", "flas("],
+
+  // FastAPI typos
+  "FastAPI": ["FastApi", "fastapi", "Fast_Api"],
+  "APIRouter": ["ApiRouter", "apirouter", "api_router"],
+  "@app.": ["@app.", "@App.", "app."],
+
+  // File operations
+  "json.loads": ["json.loades", "jsonload", "json.load"],
+  "json.dumps": ["json.dumsp", "jsondump", "json.dump"],
+  "file.read()": ["file.readlines()"],
+  "readlines": ["readline", "readlins", "read_line"],
+  "readline": ["readlines", "read_lin"],
+
+  // itertools and collections
+  "from_iterable": ["fromiterable", "from_iterblie"],
+  "namedtuple": ["named_tuple", "namedtple", "namedtupe"],
+
+  // Common pandas/numpy method typos
+  "to_csv": ["to_csvs", "to_scv", "tosv"],
+  "to_excel": ["to_exel", "toexel"],
+  "dropna": ["drop_na", "drobna"],
+  "fillna": ["fill_na", "filna"],
+  "reset_index": ["resetindex", "reset_indx"],
+  "groupby": ["group_by", "grpupby"],
 };
 
 // Tipos para resultados
@@ -269,6 +375,153 @@ function detectFunctionTypos(code: string): Issue[] {
   return issues;
 }
 
+// Detectar typos usando KNOWN_TYPOS durante la verificación
+// Esto permite REPORTAR errores antes de hacer auto-fix
+function detectTyposFromKnown(code: string): Issue[] {
+  const issues: Issue[] = [];
+
+  // Early exit for very long code to avoid O(n²) iteration
+  if (code.length > 10000) {
+    return issues;
+  }
+
+  const lines = code.split("\n");
+
+  lines.forEach((line, idx) => {
+    let matchesPerLine = 0;
+    for (const [correct, typos] of Object.entries(KNOWN_TYPOS)) {
+      if (matchesPerLine >= 10) break; // Limit matches per line
+
+      for (const typo of typos) {
+        if (matchesPerLine >= 10) break;
+
+        // Escape regex metacharacters
+        const escapedTypo = typo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+        // Caso 1: typo como palabra suelta (e.g., DatetimeTZ, datafram)
+        const wordPattern = new RegExp(`\\b${escapedTypo}\\b`, 'g');
+        if (wordPattern.test(line)) {
+          issues.push({
+            line: idx + 1,
+            code_snippet: line.trim(),
+            error_type: "typo",
+            message: `'${typo}' parece ser un typo. ¿Quisiste decir '${correct}'?`,
+            suggestion: correct,
+          });
+          matchesPerLine++;
+          continue;
+        }
+
+        // Caso 2: typo precedido por punto - como objeto.metodo (e.g., pd.data_frame)
+        const methodPattern = new RegExp(`\\.${escapedTypo}\\b`, 'g');
+        if (methodPattern.test(line)) {
+          issues.push({
+            line: idx + 1,
+            code_snippet: line.trim(),
+            error_type: "typo",
+            message: `'${typo}' parece ser un typo. ¿Quisiste decir '${correct}'?`,
+            suggestion: correct,
+          });
+          matchesPerLine++;
+        }
+      }
+    }
+  });
+
+  return issues;
+}
+
+// Detectar issues específicos de Python (indentación, mutables, etc.)
+function detectPythonSyntaxIssues(code: string): Issue[] {
+  const issues: Issue[] = [];
+  const lines = code.split("\n");
+
+  let inFunctionOrClass = false;
+  let functionIndent = 0;
+  let prevLine = "";
+
+  for (let idx = 0; idx < lines.length; idx++) {
+    const line = lines[idx];
+    const trimmed = line.trim();
+
+    // Detectar inicio de función/clase
+    if (/^(async\s+)?def\s+\w+/.test(trimmed) || /^class\s+\w+/.test(trimmed)) {
+      inFunctionOrClass = true;
+      const indentMatch = line.match(/^(\s*)/);
+      functionIndent = indentMatch ? indentMatch[1].length : 0;
+    }
+
+    // === 1. Tabs mezclados con espacios ===
+    if (line.includes("\t") && line.includes(" ")) {
+      // Línea tiene ambos: tabs y espacios
+      issues.push({
+        line: idx + 1,
+        code_snippet: trimmed,
+        error_type: "mixed_indentation",
+        message: "Indentación mixta: tabs y espacios mezclados en la misma línea",
+        suggestion: "Usa solo espacios (4) o solo tabs consistentemente",
+      });
+    }
+
+    // === 2. Indentación inconsistente dentro de funciones ===
+    if (inFunctionOrClass && trimmed && !trimmed.startsWith("#") && !trimmed.startsWith("\"\"\"")) {
+      if (/^(def|class|async\s+def)/.test(trimmed) === false) {
+        const indentMatch = line.match(/^(\s*)/);
+        const currentIndent = indentMatch ? indentMatch[1].length : 0;
+
+        // Verificar si la indentación no es múltiplo de 4 ni consistente con la estructura
+        if (currentIndent > 0 && currentIndent % 4 !== 0 && !line.startsWith("\t")) {
+          issues.push({
+            line: idx + 1,
+            code_snippet: trimmed,
+            error_type: "invalid_indentation",
+            message: `Indentación inválida: ${currentIndent} espacios (debería ser múltiplo de 4)`,
+            suggestion: "Usa múltiplos de 4 espacios",
+          });
+        }
+      }
+    }
+
+    // Reset función cuando vuelve a nivel 0
+    if (trimmed && !trimmed.startsWith("#") && !trimmed.startsWith("\"\"\"")) {
+      const indentMatch = line.match(/^(\s*)/);
+      const currentIndent = indentMatch ? indentMatch[1].length : 0;
+      if (currentIndent === 0 && inFunctionOrClass && trimmed) {
+        inFunctionOrClass = false;
+      }
+    }
+
+    // === 3. Mutable default arguments ===
+    // Patrón: def foo(arg=[]) o def foo(arg={})
+    const mutableDefaultMatch = trimmed.match(/^(\s*)(async\s+)?def\s+\w+\s*\([^)]*=\s*[\[\{]/);
+    if (mutableDefaultMatch) {
+      issues.push({
+        line: idx + 1,
+        code_snippet: trimmed,
+        error_type: "mutable_default_argument",
+        message: "Argumento mutable como valor por defecto: la lista/dict se comparte entre llamadas",
+        suggestion: "Usa None como默认值: def foo(arg=None)",
+      });
+    }
+
+    // === 4. Bare except clauses ===
+    // Patrón: except: sin excepción específica
+    if (/^\s*except\s*:\s*(#.*)?$/.test(trimmed)) {
+      issues.push({
+        line: idx + 1,
+        code_snippet: trimmed,
+        error_type: "bare_except",
+        message: "Cláusula 'except:' sin excepción específica puede capturar KeyboardInterrupt y SystemExit",
+        suggestion: "Usa 'except Exception:' o 'except SpecificError:'",
+      });
+    }
+
+    prevLine = line;
+  }
+
+  return issues;
+}
+
 // Detectar errores de sintaxis básicos
 // NOTA: Esta es una detección BÁSICA usando regex/heurísticas, no un parser completo de Python
 function detectSyntaxErrors(code: string): Issue[] {
@@ -314,7 +567,7 @@ function detectSyntaxErrors(code: string): Issue[] {
     // Paréntesis desbalanceados
     const openParen = (trimmed.match(/\(/g) || []).length;
     const closeParen = (trimmed.match(/\)/g) || []).length;
-    if (Math.abs(openParen - closeParen) > 1) {
+    if (Math.abs(openParen - closeParen) > 0) {
       issues.push({
         line: idx + 1,
         code_snippet: trimmed,
@@ -327,7 +580,7 @@ function detectSyntaxErrors(code: string): Issue[] {
     // Llaves desbalanceadas
     const openBrace = (trimmed.match(/\{/g) || []).length;
     const closeBrace = (trimmed.match(/\}/g) || []).length;
-    if (Math.abs(openBrace - closeBrace) > 1) {
+    if (Math.abs(openBrace - closeBrace) > 0) {
       issues.push({
         line: idx + 1,
         code_snippet: trimmed,
@@ -340,7 +593,7 @@ function detectSyntaxErrors(code: string): Issue[] {
     // Corchetes desbalanceados
     const openBracket = (trimmed.match(/\[/g) || []).length;
     const closeBracket = (trimmed.match(/\]/g) || []).length;
-    if (Math.abs(openBracket - closeBracket) > 1) {
+    if (Math.abs(openBracket - closeBracket) > 0) {
       issues.push({
         line: idx + 1,
         code_snippet: trimmed,
@@ -399,6 +652,8 @@ function detectAllIssues(code: string, language: string): Issue[] {
   if (language === "python") {
     issues.push(...detectSyntaxErrors(code));
     issues.push(...detectFunctionTypos(code));
+    issues.push(...detectTyposFromKnown(code));
+    issues.push(...detectPythonSyntaxIssues(code));
 
     // Verificar imports Python
     const imports = extractImports(code);
@@ -430,20 +685,23 @@ function detectAllIssues(code: string, language: string): Issue[] {
 
 // === Framework detection patterns ===
 const FRAMEWORK_PATTERNS: Record<string, RegExp[]> = {
-  django: [/\b(manage\.py|MIGRATIONS|settings\.py|INSTALLED_APPS|DJANGO_SETTINGS_MODULE)\b/i],
-  flask: [/\b(app\.route|@app|Flask\(|render_template|request\.)/i],
-  fastapi: [/\b(@app\.|FastAPI|APIRouter|uvicorn)/i],
+  django: [/\b(manage\.py|MIGRATIONS|settings\.py|INSTALLED_APPS|DJANGO_SETTINGS_MODULE)\b/i, /\bDjango\b/i],
+  flask: [/\b(app\.route|@app|Flask\(|render_template|request\.)/i, /\bFlask\b/i],
+  fastapi: [/\b(@app\.|FastAPI|APIRouter|uvicorn)/i, /\bFastAPI\b/i],
   fastapi_route: [/@(app|router)\.(get|post|put|delete|patch)\(/i],
-  react: [/\b(useState|useEffect|useRef|Component|jsx|React\.)/i],
-  nextjs: [/\b(getServerSideProps|getStaticProps|next\/|NextPage|next\/image)/i],
+  react: [/\b(useState|useEffect|useRef|Component|jsx|React\.)/i, /\bReact\b/i],
+  nextjs: [/\b(getServerSideProps|getStaticProps|next\/|NextPage|next\/image)/i, /\bNext\.?js\b/i, /\bNextJS\b/i],
   nodejs: [/\b(module\.exports|require\(|process\.|__dirname|__filename)/i],
-  express: [/\b(app|router)\.(get|post|put|delete|patch|use)\(/i],
-  nestjs: [/\b(@Controller|@Injectable|@Module|NestFactory)/i],
-  typescript: [/\binterface\s+\w+|type\s+\w+\s*=|:\s*(string|number|boolean|any)\b/i],
-  pytest: [/\bdef test_\w+\(|pytest\.|fixture\(|@pytest\./i],
-  jest: [/\bdescribe\(|it\(|test\(|expect\(|@testing-library/i],
-  playwright: [/\b(page|expect)\.(click|fill|goTo|waitFor)/i],
-  sqlalchemy: [/\b(session|query|Column|Integer|String\()/i],
+  express: [/\b(app|router)\.(get|post|put|delete|patch|use)\(/i, /\bExpress\b/i, /\bexpress\.js\b/i],
+  nestjs: [/\b(@Controller|@Injectable|@Module|NestFactory)/i, /\bNestJS\b/i],
+  typescript: [/\binterface\s+\w+|type\s+\w+\s*=|:\s*(string|number|boolean|any)\b/i, /\bTypeScript\b/i],
+  pytest: [/\bdef test_\w+\(|pytest\.|fixture\(|@pytest\./i, /\bpytest\b/i],
+  jest: [/\b(describe|it|test|expect)\s*\(/i, /\bjest\b/i],
+  playwright: [/\b(page|expect)\.(click|fill|goTo|waitFor)/i, /\bPlaywright\b/i],
+  sqlalchemy: [/\b(from sqlalchemy|import sqlalchemy)\b/i],
+  pandas: [/\b(pandas|pd\.read_csv|DataFrame|pd\.DataFrame)\b/i, /\bpandas\b/i],
+  numpy: [/\b(numpy|np\.array|np\.zeros|np\.ones|import numpy)\b/i, /\bnumpy\b/i],
+  matplotlib: [/\b(import matplotlib|from matplotlib|plt\.)/i, /\bmatplotlib\b/i],
   prisma: [/\b(prisma\.|@prisma|model\s+\w+\s*\{)/i],
 };
 
@@ -453,14 +711,16 @@ const INTENTION_PATTERNS = {
   api: /\b(rest|graphql|endpoint|api|route|http|request|response|status\s*code)\b/i,
   testing: /\b(test|jest|pytest|vitest|mocha|unit\s*test|integration\s*test|coverage)\b/i,
   auth: /\b(auth|login|password|token|jwt|oauth|session|permission|role)\b/i,
-  devops: /\b(docker|kubernetes|ci\/cd|deploy|nginx|apache|nginx|container|pod)\b/i,
+  devops: /\b(docker|kubernetes|ci\/cd|deploy|nginx|container|pod)\b/i,
   frontend: /\b(component|props|state|jsx|tsx|react|vue|angular|svelte|html|css|style)\b/i,
   backend: /\b(server|api|endpoint|route|controller|service|repository|middleware)\b/i,
+  data_processing: /\b(csv|excel|parse|filter|map|reduce|aggregate|transform|clean)\b/i,
+  file_io: /\b(read|write|open|file|load|save|export)\b/i,
 };
 
 // === JavaScript/TypeScript imports ===
-import { verifyJavaScript, extractJSImports } from "./javascript.js";
-import { verifyTypeScript } from "./typescript.js";
+import { verifyJavaScript, extractJSImports, fixJavaScript } from "./javascript.js";
+import { verifyTypeScript, fixTypeScript } from "./typescript.js";
 
 // === Funciones públicas ===
 
@@ -568,28 +828,55 @@ export function verifyAndFix(
   code: string,
   language = "python"
 ): VerifyAndFixResult {
-  const issues = detectAllIssues(code, language);
+  // Normalize language
+  const normalizedLang = language.toLowerCase();
 
-  // Apply auto-fix to the code
+  // Detect language if needed
+  let detectedLanguage = normalizedLang;
+  if (!["python", "javascript", "typescript"].includes(normalizedLang)) {
+    // Simple language auto-detection
+    if (code.includes("def ") || code.includes("import ") || code.includes("__name__")) {
+      detectedLanguage = "python";
+    } else if (code.includes("interface ") || code.includes(": string") || code.includes(": number")) {
+      detectedLanguage = "typescript";
+    } else if (code.includes("const ") || code.includes("let ") || code.includes("function ")) {
+      detectedLanguage = "javascript";
+    } else {
+      detectedLanguage = "python"; // default
+    }
+  }
+
+  const issues = detectAllIssues(code, detectedLanguage);
+
+  // Apply language-specific fixes
   let fixedCode = code;
-  if (language === "python") {
-    fixedCode = autoFix(code, "", language);
+  if (detectedLanguage === "python") {
+    fixedCode = autoFix(code, "", detectedLanguage);
+  } else if (detectedLanguage === "javascript") {
+    fixedCode = fixJavaScript(code);
+  } else if (detectedLanguage === "typescript") {
+    fixedCode = fixTypeScript(code);
   }
 
   // Count how many fixes were applied
   let fixedCount = 0;
   if (fixedCode !== code) {
-    // Simple heuristic: count differences in known patterns
     const originalLower = code.toLowerCase();
     const fixedLower = fixedCode.toLowerCase();
 
-    if (originalLower.includes("count_items") && !fixedLower.includes("count_items")) fixedCount++;
-    if (originalLower.includes("sumarray") && !fixedLower.includes("sumarray")) fixedCount++;
-    if (originalLower.includes("appenditem") && !fixedLower.includes("appenditem")) fixedCount++;
-    if (originalLower.includes("data_frame") && !fixedLower.includes("data_frame")) fixedCount++;
-    if (originalLower.includes("datafram") && !fixedLower.includes("datafram")) fixedCount++;
-    if (originalLower.includes("datetimetz") && !fixedLower.includes("datetimetz")) fixedCount++;
-    if (originalLower.includes("joinp") && !fixedLower.includes("joinp")) fixedCount++;
+    // Count known pattern fixes
+    const fixPatterns = [
+      "count_items", "sumarray", "appenditem", "data_frame", "datafram",
+      "datetimetz", "joinp", "prin", "prnt", "ln", "lne", "lenght",
+      "spllit", "stip", "opne", "retur", "impor", "deff", "claass",
+      "arraay", "numpyy", "pandass", "countt", "stripp",
+    ];
+
+    for (const pattern of fixPatterns) {
+      if (originalLower.includes(pattern) && !fixedLower.includes(pattern)) {
+        fixedCount++;
+      }
+    }
   }
 
   // Format issues as strings
@@ -666,7 +953,7 @@ export function autoFix(
 
   let fixed = code;
 
-  // Patterns de corrección
+  // Phase 1: Apply known pattern replacements (original hardcoded patterns)
   const fixPatterns: [RegExp, string][] = [
     [/\.count_items\(/g, ".count("],
     [/\.sumArray\(/g, ".sum("],
@@ -681,11 +968,70 @@ export function autoFix(
     fixed = fixed.replace(pattern, replacement);
   });
 
+  // Phase 2: Apply KNOWN_TYPOS corrections with Levenshtein-inspired matching
+  for (const [correct, typos] of Object.entries(KNOWN_TYPOS)) {
+    for (const typo of typos) {
+      // Escape regex metacharacters
+      const escapedTypo = typo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      // Match typo as whole word
+      const typoPattern = new RegExp(`\\b${escapedTypo}\\b`, 'g');
+      fixed = fixed.replace(typoPattern, correct);
+    }
+  }
+
   return fixed;
 }
 
 import * as fs from "fs";
 import * as path from "path";
+
+// Helper to recursively read directory
+function readdirRecursive(dir: string, exclude: Set<string>): string[] {
+  const results: string[] = [];
+  const basePath = path.resolve(dir);
+
+  function walk(currentDir: string): void {
+    try {
+      const resolvedDir = path.resolve(currentDir);
+      // Path safety check - don't escape base directory
+      if (!resolvedDir.startsWith(basePath + path.sep)) return;
+
+      const entries = fs.readdirSync(currentDir, { withFileTypes: true });
+      for (const entry of entries) {
+        const fullPath = path.join(currentDir, entry.name);
+        const resolvedFullPath = path.resolve(fullPath);
+
+        // Skip if resolved path escaped base directory
+        if (!resolvedFullPath.startsWith(basePath + path.sep)) continue;
+
+        if (exclude.has(entry.name) || exclude.has(fullPath)) continue;
+        if (entry.isDirectory()) {
+          walk(fullPath);
+        } else if (entry.isFile()) {
+          results.push(fullPath);
+        }
+      }
+    } catch {
+      // Skip directories that can't be read
+    }
+  }
+
+  walk(dir);
+  return results;
+}
+
+// Infer language from file extension
+function inferLanguage(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  const langMap: Record<string, string> = {
+    ".py": "python",
+    ".js": "javascript",
+    ".ts": "typescript",
+    ".jsx": "javascript",
+    ".tsx": "typescript",
+  };
+  return langMap[ext] || "unknown";
+}
 
 export function indexProject(
   directory: string,
@@ -823,4 +1169,76 @@ export function indexProject(
   result.imports = [...new Set(result.imports)];
 
   return result;
+}
+
+export interface ScanResult {
+  file: string;
+  language: string;
+  issues: string[];
+  issue_count: number;
+  is_valid: boolean;
+  error?: string;
+}
+
+export interface ScanSummary {
+  total_files: number;
+  total_issues: number;
+  files_with_issues: number;
+  clean_files: number;
+  results: ScanResult[];
+}
+
+const DEFAULT_EXCLUDE = new Set([
+  "node_modules", ".git", "__pycache__", ".venv", "dist", "build", "coverage"
+]);
+
+export function scanProject(
+  directory: string,
+  extensions?: string[]
+): ScanSummary {
+  const exts = extensions ?? [".py", ".js", ".ts", ".jsx", ".tsx"];
+  const extSet = new Set(exts);
+
+  const files = readdirRecursive(directory, DEFAULT_EXCLUDE);
+
+  const results: ScanResult[] = [];
+
+  for (const file of files) {
+    const ext = path.extname(file).toLowerCase();
+    if (!extSet.has(ext)) continue;
+
+    const language = inferLanguage(file);
+
+    try {
+      const content = fs.readFileSync(file, "utf-8");
+      const issues = verifyCode(content, language);
+
+      results.push({
+        file,
+        language,
+        issues,
+        issue_count: issues.length,
+        is_valid: issues.length === 0,
+      });
+    } catch (err) {
+      results.push({
+        file,
+        language,
+        issues: [],
+        issue_count: 0,
+        is_valid: false,
+        error: err instanceof Error ? err.message : "Unknown error",
+      });
+    }
+  }
+
+  const filesWithIssues = results.filter((r) => r.issues.length > 0).length;
+
+  return {
+    total_files: results.length,
+    total_issues: results.reduce((sum, r) => sum + r.issue_count, 0),
+    files_with_issues: filesWithIssues,
+    clean_files: results.length - filesWithIssues,
+    results,
+  };
 }
