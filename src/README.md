@@ -5,13 +5,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/typescript-5.3-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/node-20+-green.svg)](https://nodejs.org/)
-[![npm](https://img.shields.io/badge/npm-v0.6.1-red.svg)](https://www.npmjs.com/package/codeshield-verify-mcp)
+[![npm](https://img.shields.io/badge/npm-v0.6.2-red.svg)](https://www.npmjs.com/package/codeshield-verify-mcp)
 
 ---
 
 ## Estado Actual
 
-**Versión:** 0.6.1 (ALPHA) - [npm package](https://www.npmjs.com/package/codeshield-verify-mcp)
+**Versión:** 0.6.2 (ALPHA) - [npm package](https://www.npmjs.com/package/codeshield-verify-mcp)
 
 ### Modos de Uso
 

@@ -15,7 +15,7 @@ import {
 } from "./context-store.js";
 
 // Version - sync with package.json
-const VERSION = "0.6.0";
+const VERSION = "0.6.2";
 
 // === Types ===
 

@@ -7,6 +7,31 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.6.2] - 2026-04-12 - ALPHA
+
+### JS/TS Stdlib Expansion
+- 📦 **Node.js modules** - fs (Promise-based), path, util, events, stream, http, https, crypto, buffer, net, dns, tls, zlib
+- 📦 **Array methods** - findLast, findLastIndex, toSorted, toReversed, with
+- 📦 **String methods** - replaceAll, split (mejoras)
+- 📦 **Object methods** - groupBy, entries
+- 📦 **Map/Set operations** - merge, union, intersection
+- 📦 **Express patterns** - middleware, routing
+- 📦 **React hooks** - useState, useEffect, useCallback, useMemo
+
+### Prompt Analysis Improvements
+- 🆕 **New frameworks** - Next.js 14 (app router, server components, edge), Django REST (ViewSets, ModelSerializer), FastAPI (Depends, BackgroundTasks), NestJS (@Controller decorators)
+- 🆕 **DevOps detection** - Docker (docker-compose, Dockerfile), Kubernetes (kubectl, deployment, service, ingress)
+- 🆕 **New intentions** - microservices, serverless (lambda), realtime (websocket, SSE), graphql (apollo, relay), cms (wordpress, strapi), ecommerce (shopify, woocommerce)
+
+### New Features
+- ✨ **detectCodePatterns()** - Nueva función para detectar CRUD, API, auth, database patterns en código
+- ✨ **Code pattern detection** - Analiza código para identificar tipos de operaciones
+
+### Version Fix
+- 🔧 **cli.ts VERSION** - Corregido de "0.6.0" a "0.6.2"
+
+---
+
 ## [0.6.1] - 2026-04-12 - ALPHA
 
 ### Security Fixes

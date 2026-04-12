@@ -61,7 +61,7 @@ CodeShield MCP busca ser la **primera línea de defensa** contra código generad
 |---------|-------|--------|
 | **0.6.0** | CLI, Context, Audit Deps, Security | ✅ Published |
 | **0.6.1** | Security fixes, file locking, CVE update, CLI validation | ✅ Published |
-| **0.6.2** | Mejoras de detección | 🔲 Pendiente |
+| **0.6.2** | JS/TS stdlib expansion, better prompt analysis, detectCodePatterns | 🔲 Tu decides |
 | **0.6.3** | - | 🔲 Pendiente |
 | ... | - | ... |
 | **0.6.9** | Pre-lanzamiento 0.7.0 | 🔲 Pendiente |
