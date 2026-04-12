@@ -5,13 +5,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/typescript-5.3-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/node-20+-green.svg)](https://nodejs.org/)
-[![npm](https://img.shields.io/badge/npm-v0.6.0-red.svg)](https://www.npmjs.com/package/codeshield-verify-mcp)
+[![npm](https://img.shields.io/badge/npm-v0.6.1-red.svg)](https://www.npmjs.com/package/codeshield-verify-mcp)
 
 ---
 
 ## Estado Actual
 
-**Versión:** 0.6.0 (ALPHA) - [npm package](https://www.npmjs.com/package/codeshield-verify-mcp)
+**Versión:** 0.6.1 (ALPHA) - [npm package](https://www.npmjs.com/package/codeshield-verify-mcp)
 
 ### Modos de Uso
 
@@ -29,7 +29,8 @@
 | `suggest_similar_name` | Sugiere correcciones para typos |
 | `fix_code` | Corrige automáticamente errores |
 | `index_project` | Indexa proyecto con cache en memoria |
-| `audit_deps` | Audita dependencias contra CVEs conocidos |
+| `cache_stats` | Estadísticas del cache |
+| `cache_clear` | Limpia el cache |
 
 ### Comandos CLI
 
@@ -38,7 +39,7 @@
 | `codeshield verify <file>` | Verificar archivo |
 | `codeshield scan [dir]` | Escanear proyecto completo |
 | `codeshield audit-deps <file>` | Auditar CVEs en requirements.txt |
-| `codeshield context save/list/restore` | Persistencia de contexto |
+| `codeshield context save/list/restore/delete` | Persistencia de contexto |
 | `codeshield serve` | Iniciar servidor MCP |
 
 ---
@@ -77,10 +78,21 @@ npm run build
 
 ## Seguridad
 
-- Path traversal protection en scanProject() e indexProject()
-- CVE database para dependency audit
-- Input validation (1MB limit)
-- Regex escaping para evitar ReDoS
+- **Path traversal protection** en scanProject() e indexProject()
+- **CVE database** para dependency audit (21 packages, CVEs 2023-2024)
+- **Input validation** (100KB limit en CLI, 1MB en MCP)
+- **ReDoS prevention** con memoization y early exit
+- **Race condition protection** con file locking en context-store
+- **Atomic writes** con temp file + rename
+- **14 security tests** cubriendo: race conditions, ReDoS, path traversal, input validation
+
+---
+
+## Testing
+
+```bash
+npm test  # 99 tests incluyendo 14 de seguridad
+```
 
 ---
 

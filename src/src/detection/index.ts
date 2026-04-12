@@ -375,13 +375,92 @@ function detectFunctionTypos(code: string): Issue[] {
   return issues;
 }
 
+// === Pre-compiled regex patterns for detectTyposFromKnown (ReDoS mitigation) ===
+// Memoized cache: [typo] -> { wordPattern, methodPattern }
+const typoPatternCache = new Map<string, { wordPattern: RegExp; methodPattern: RegExp }>();
+
+function getTypoPatterns(typo: string): { wordPattern: RegExp; methodPattern: RegExp } {
+  const escapedTypo = typo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  if (!typoPatternCache.has(typo)) {
+    typoPatternCache.set(typo, {
+      wordPattern: new RegExp(`\\b${escapedTypo}\\b`, 'g'),
+      methodPattern: new RegExp(`\\.${escapedTypo}\\b`, 'g'),
+    });
+  }
+
+  return typoPatternCache.get(typo)!;
+}
+
 // Detectar typos usando KNOWN_TYPOS durante la verificación
 // Esto permite REPORTAR errores antes de hacer auto-fix
 function detectTyposFromKnown(code: string): Issue[] {
   const issues: Issue[] = [];
 
-  // Early exit for very long code to avoid O(n²) iteration
+  // Early exit: limit code processed if >50000 chars
+  if (code.length > 50000) {
+    return issues;
+  }
+
+  // Fast path for very long code: only check lines containing potential typos
   if (code.length > 10000) {
+    const lines = code.split("\n");
+    const checkedLines = new Set<number>();
+
+    outerLoop:
+    for (const [, typos] of Object.entries(KNOWN_TYPOS)) {
+      if (checkedLines.size >= 100) break;
+      for (const typo of typos) {
+        for (let idx = 0; idx < lines.length; idx++) {
+          if (!checkedLines.has(idx) && lines[idx].includes(typo)) {
+            checkedLines.add(idx);
+          }
+          if (checkedLines.size >= 100) break;
+        }
+        if (checkedLines.size >= 100) break;
+      }
+    }
+
+    for (const idx of checkedLines) {
+      const line = lines[idx];
+      let matchesPerLine = 0;
+
+      for (const [correct, typos] of Object.entries(KNOWN_TYPOS)) {
+        if (matchesPerLine >= 10) break;
+
+        for (const typo of typos) {
+          if (matchesPerLine >= 10) break;
+
+          const patterns = getTypoPatterns(typo);
+          patterns.wordPattern.lastIndex = 0;
+          patterns.methodPattern.lastIndex = 0;
+
+          if (patterns.wordPattern.test(line)) {
+            issues.push({
+              line: idx + 1,
+              code_snippet: line.trim(),
+              error_type: "typo",
+              message: `'${typo}' parece ser un typo. ¿Quisiste decir '${correct}'?`,
+              suggestion: correct,
+            });
+            matchesPerLine++;
+            continue;
+          }
+
+          if (patterns.methodPattern.test(line)) {
+            issues.push({
+              line: idx + 1,
+              code_snippet: line.trim(),
+              error_type: "typo",
+              message: `'${typo}' parece ser un typo. ¿Quisiste decir '${correct}'?`,
+              suggestion: correct,
+            });
+            matchesPerLine++;
+          }
+        }
+      }
+    }
+
     return issues;
   }
 
@@ -390,17 +469,20 @@ function detectTyposFromKnown(code: string): Issue[] {
   lines.forEach((line, idx) => {
     let matchesPerLine = 0;
     for (const [correct, typos] of Object.entries(KNOWN_TYPOS)) {
-      if (matchesPerLine >= 10) break; // Limit matches per line
+      if (matchesPerLine >= 10) break;
 
       for (const typo of typos) {
         if (matchesPerLine >= 10) break;
 
-        // Escape regex metacharacters
-        const escapedTypo = typo.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Early exit with String.includes() before executing regex
+        if (!line.includes(typo)) continue;
+
+        const patterns = getTypoPatterns(typo);
+        patterns.wordPattern.lastIndex = 0;
+        patterns.methodPattern.lastIndex = 0;
 
         // Caso 1: typo como palabra suelta (e.g., DatetimeTZ, datafram)
-        const wordPattern = new RegExp(`\\b${escapedTypo}\\b`, 'g');
-        if (wordPattern.test(line)) {
+        if (patterns.wordPattern.test(line)) {
           issues.push({
             line: idx + 1,
             code_snippet: line.trim(),
@@ -413,8 +495,7 @@ function detectTyposFromKnown(code: string): Issue[] {
         }
 
         // Caso 2: typo precedido por punto - como objeto.metodo (e.g., pd.data_frame)
-        const methodPattern = new RegExp(`\\.${escapedTypo}\\b`, 'g');
-        if (methodPattern.test(line)) {
+        if (patterns.methodPattern.test(line)) {
           issues.push({
             line: idx + 1,
             code_snippet: line.trim(),

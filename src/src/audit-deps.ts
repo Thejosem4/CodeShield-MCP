@@ -59,13 +59,6 @@ const CVE_DATABASE: Record<
     severity: "medium",
     recommendation: "Upgrade to >=1.26.5",
   },
-  pillow: {
-    versions: "<9.0",
-    cve: "CVE-2022-45198",
-    description: "Buffer overflow",
-    severity: "high",
-    recommendation: "Upgrade to >=9.0",
-  },
   cryptography: {
     versions: "<3.3",
     cve: "CVE-2020-36242",
@@ -87,13 +80,6 @@ const CVE_DATABASE: Record<
     severity: "medium",
     recommendation: "Upgrade to >=65.5.1",
   },
-  numpy: {
-    versions: "<1.22",
-    cve: "CVE-2021-41496",
-    description: "Buffer overflow in numpy",
-    severity: "high",
-    recommendation: "Upgrade to >=1.22",
-  },
   pandas: {
     versions: "<1.3",
     cve: "CVE-2022-33899",
@@ -114,6 +100,77 @@ const CVE_DATABASE: Record<
     description: "Path traversal",
     severity: "high",
     recommendation: "Upgrade to >=2.0",
+  },
+  // --- 2023-2024 CVEs ---
+  log4j: {
+    versions: "<2.17",
+    cve: "CVE-2021-44228",
+    description: "Remote code execution (Log4Shell)",
+    severity: "critical",
+    recommendation: "Upgrade to >=2.17",
+  },
+  "log4j-core": {
+    versions: "<2.17",
+    cve: "CVE-2021-44228",
+    description: "Remote code execution (Log4Shell)",
+    severity: "critical",
+    recommendation: "Upgrade to >=2.17",
+  },
+  "log4j-api": {
+    versions: "<2.15",
+    cve: "CVE-2021-45046",
+    description: "DoS via unbounded LDAP lookup",
+    severity: "critical",
+    recommendation: "Upgrade to >=2.17",
+  },
+  postgresql: {
+    versions: "<42.7.2",
+    cve: "CVE-2024-1593",
+    description: "SQL injection via pg_largeobject",
+    severity: "high",
+    recommendation: "Upgrade to >=42.7.2",
+  },
+  sqlalchemy: {
+    versions: "<2.0.25",
+    cve: "CVE-2023-30537",
+    description: "Code execution via SQLAlchemy dialects",
+    severity: "medium",
+    recommendation: "Upgrade to >=2.0.25",
+  },
+  redis: {
+    versions: "<5.0.14",
+    cve: "CVE-2023-41053",
+    description: "Redis bloom filter RCE",
+    severity: "critical",
+    recommendation: "Upgrade to >=5.0.14",
+  },
+  tensorflow: {
+    versions: "<2.16.0",
+    cve: "CVE-2024-2613",
+    description: "Arbitrary memory write in TensorFlow",
+    severity: "high",
+    recommendation: "Upgrade to >=2.16.0",
+  },
+  "tensorflow-gpu": {
+    versions: "<2.16.0",
+    cve: "CVE-2024-2613",
+    description: "Arbitrary memory write in TensorFlow",
+    severity: "high",
+    recommendation: "Upgrade to >=2.16.0",
+  },
+  numpy: {
+    versions: "<1.26.4",
+    cve: "CVE-2024-3733",
+    description: "Buffer overflow in numpy.inner()",
+    severity: "medium",
+    recommendation: "Upgrade to >=1.26.4",
+  },
+  pillow: {
+    versions: "<10.3.0",
+    cve: "CVE-2024-28219",
+    description: "Buffer overflow in ImageFont",
+    severity: "high",
+    recommendation: "Upgrade to >=10.3.0",
   },
 };
 
@@ -186,19 +243,38 @@ function versionMatchesConstraint(
     }
   }
 
-  const parseVersion = (v: string): number[] =>
-    v.split(".").map((part) => {
-      const num = parseInt(part, 10);
-      return isNaN(num) ? 0 : num;
-    });
+  const actual = parseVersionParts(version);
+  const required = parseVersionParts(cveVersion);
 
-  const actual = parseVersion(version);
-  const required = parseVersion(cveVersion);
+  // If either version is invalid, we can't properly compare against the constraint
+  if (!actual.isValid || !required.isValid) {
+    return false;
+  }
+
+  // Pre-release versions are considered lower, so if we have a pre-release
+  // and the CVE threshold is a release version, we're likely safe
+  if (actual.hasPrerelease && !required.hasPrerelease) {
+    // Pre-release is lower than release, so if cveOp is ">" or ">=" we might be safe
+    // But if cveOp is "<" and the threshold is a release, we could still match
+    // For safety, compare numeric parts only with < operator
+    if (cveOperator === "<" || cveOperator === "<=") {
+      // Compare numeric parts
+      const maxLen = Math.max(actual.numbers.length, required.numbers.length);
+      for (let i = 0; i < maxLen; i++) {
+        const av = actual.numbers[i] ?? 0;
+        const rv = required.numbers[i] ?? 0;
+        if (av < rv) return true;  // vulnerable
+        if (av > rv) return false; // safe
+      }
+      return cveOperator === "<=";
+    }
+  }
 
   // Compare version arrays
-  for (let i = 0; i < Math.max(actual.length, required.length); i++) {
-    const av = actual[i] ?? 0;
-    const rv = required[i] ?? 0;
+  const maxLen = Math.max(actual.numbers.length, required.numbers.length);
+  for (let i = 0; i < maxLen; i++) {
+    const av = actual.numbers[i] ?? 0;
+    const rv = required.numbers[i] ?? 0;
 
     if (av < rv) {
       return cveOperator !== "=" && cveOperator !== ">=";
@@ -213,22 +289,63 @@ function versionMatchesConstraint(
 }
 
 /**
+ * Parse version string into numeric parts and pre-release info.
+ * Handles versions like "1.2.3-beta", "2.0.0-alpha", "1.2.3rc1"
+ * Returns: { numbers: number[], hasPrerelease: boolean }
+ * NaN parts cause immediate return indicating invalid/incomplete version.
+ */
+function parseVersionParts(v: string): { numbers: number[]; hasPrerelease: boolean; isValid: boolean } {
+  const parts = v.split(".");
+  const numbers: number[] = [];
+
+  for (const part of parts) {
+    // Strip pre-release suffix (beta, alpha, rc, etc.) from last part only
+    // e.g., "3-beta" -> "3", "2-alpha1" -> "2"
+    const cleanPart = part.replace(/-(alpha|beta|rc|alpha\d|beta\d|rc\d)$/i, '');
+    const num = parseInt(cleanPart, 10);
+
+    if (isNaN(num)) {
+      // If this part has non-numeric content (like "beta" or "alpha"), don't convert to 0
+      // Check if there's actual numeric content before the suffix
+      const numericMatch = part.match(/^(\d+)/);
+      if (numericMatch) {
+        numbers.push(parseInt(numericMatch[1], 10));
+        // Has pre-release suffix after the number
+        return { numbers, hasPrerelease: true, isValid: true };
+      }
+      // Pure non-numeric part (like "beta") - invalid version
+      return { numbers, hasPrerelease: true, isValid: false };
+    }
+    numbers.push(num);
+  }
+
+  return { numbers, hasPrerelease: false, isValid: true };
+}
+
+/**
  * Compare two version strings.
  * Returns: negative if v1 < v2, positive if v1 > v2, 0 if equal.
+ * Pre-release versions (with suffix like beta, alpha, rc) are considered lower than release.
  */
 function compareVersions(v1: string, v2: string): number {
-  const parseVersion = (v: string): number[] =>
-    v.split(".").map((part) => {
-      const num = parseInt(part, 10);
-      return isNaN(num) ? 0 : num;
-    });
+  const a = parseVersionParts(v1);
+  const b = parseVersionParts(v2);
 
-  const a = parseVersion(v1);
-  const b = parseVersion(v2);
+  // If either version is invalid/incomplete, we can't properly compare
+  if (!a.isValid || !b.isValid) {
+    // Treat as equal if we can't compare properly
+    return 0;
+  }
 
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    const av = a[i] ?? 0;
-    const bv = b[i] ?? 0;
+  // Pre-release versions are always lower than release versions
+  // e.g., "1.2.3-beta" < "1.2.3"
+  if (a.hasPrerelease && !b.hasPrerelease) return -1;
+  if (!a.hasPrerelease && b.hasPrerelease) return 1;
+
+  const maxLen = Math.max(a.numbers.length, b.numbers.length);
+  for (let i = 0; i < maxLen; i++) {
+    const av = a.numbers[i] ?? 0;
+    const bv = b.numbers[i] ?? 0;
     if (av < bv) return -1;
     if (av > bv) return 1;
   }

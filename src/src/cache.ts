@@ -19,6 +19,9 @@ const DEFAULT_TTL = 5 * 60 * 1000;
 // In-memory cache
 const indexCache = new Map<string, CacheEntry>();
 
+// Max cache entries to prevent DoS via memory exhaustion
+const MAX_CACHE_ENTRIES = 100;
+
 /**
  * Get cached index for a directory
  */
@@ -50,6 +53,21 @@ export function setCachedIndex(
   index: IndexResult,
   ttl = DEFAULT_TTL
 ): void {
+  // Evict oldest entries if at capacity
+  if (indexCache.size >= MAX_CACHE_ENTRIES && !indexCache.has(directory)) {
+    let oldestKey: string | null = null;
+    let oldestTime = Infinity;
+    for (const [key, entry] of indexCache) {
+      if (entry.timestamp < oldestTime) {
+        oldestTime = entry.timestamp;
+        oldestKey = key;
+      }
+    }
+    if (oldestKey) {
+      indexCache.delete(oldestKey);
+    }
+  }
+
   indexCache.set(directory, {
     index,
     timestamp: Date.now(),

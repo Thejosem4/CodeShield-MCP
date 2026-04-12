@@ -95,6 +95,17 @@ async function handleVerify(
     process.exit(1);
   }
 
+  // Validate supported file extensions
+  const supportedExtensions = [".py", ".js", ".ts", ".jsx", ".tsx", ".java", ".cpp", ".c", ".go", ".rs", ".rb", ".php"];
+  const ext = path.extname(filePath).toLowerCase();
+  if (!supportedExtensions.includes(ext)) {
+    const msg = json
+      ? JSON.stringify({ error: `Unsupported file extension: ${ext}. Supported: ${supportedExtensions.join(", ")}` })
+      : `Error: Unsupported file extension: ${ext}. Supported: ${supportedExtensions.join(", ")}`;
+    console.error(msg);
+    process.exit(1);
+  }
+
   const code = fs.readFileSync(filePath, "utf-8");
   const inferredLang = language || path.extname(filePath).slice(1) || "python";
   const issues = verifyCode(code, inferredLang);
@@ -134,10 +145,22 @@ async function handleScan(
 
   const targetDir = directory || process.cwd();
 
-  if (!fs.existsSync(targetDir) || !fs.statSync(targetDir).isDirectory()) {
+  // Resolve symlinks and verify directory exists
+  let resolvedDir: string;
+  try {
+    resolvedDir = fs.realpathSync(targetDir);
+  } catch {
     const msg = json
       ? JSON.stringify({ error: `Directory not found: ${targetDir}` })
       : `Error: Directory not found: ${targetDir}`;
+    console.error(msg);
+    process.exit(1);
+  }
+
+  if (!fs.statSync(resolvedDir).isDirectory()) {
+    const msg = json
+      ? JSON.stringify({ error: `Path is not a directory: ${targetDir}` })
+      : `Error: Path is not a directory: ${targetDir}`;
     console.error(msg);
     process.exit(1);
   }
@@ -225,14 +248,54 @@ async function handleExplain(
 }
 
 async function handleAuditDeps(
-  _filePath: string,
-  _options: AuditDepsOptions,
+  filePath: string,
+  options: AuditDepsOptions,
   _flags: string[]
 ): Promise<void> {
-  // Stub - not implemented yet
-  const msg = "Audit dependencies feature not implemented yet";
-  console.error(msg);
-  process.exit(1);
+  const { json, quiet } = options;
+
+  // Default to requirements.txt in current directory
+  const targetPath = filePath || path.join(process.cwd(), "requirements.txt");
+
+  if (!fs.existsSync(targetPath)) {
+    const msg = json
+      ? JSON.stringify({ error: `Requirements file not found: ${targetPath}` })
+      : `Error: Requirements file not found: ${targetPath}`;
+    console.error(msg);
+    process.exit(1);
+  }
+
+  const content = fs.readFileSync(targetPath, "utf-8");
+  const { auditDependencies } = await import("./audit-deps.js");
+  const results = auditDependencies(content);
+
+  if (json) {
+    printJson({
+      file: targetPath,
+      vulnerabilities: results,
+      count: results.length,
+      is_clean: results.length === 0,
+    });
+  } else {
+    if (!quiet) {
+      console.log(`\nAuditing: ${targetPath}`);
+    }
+
+    if (results.length === 0) {
+      console.log("\n✓ No known vulnerabilities found");
+    } else {
+      console.log(`\n✗ Found ${results.length} vulnerability(ies):\n`);
+      for (const r of results) {
+        console.log(`  • ${r.package} ${r.operator}${r.currentVersion || ""} [${r.severity}]`);
+        console.log(`    CVE: ${r.cve}`);
+        console.log(`    ${r.description}`);
+        console.log(`    Recommendation: ${r.recommendation}\n`);
+      }
+    }
+  }
+
+  const startTime = Date.now();
+  printMetrics(startTime, results.length, quiet, json);
 }
 
 async function handleContextSave(
@@ -247,17 +310,24 @@ async function handleContextSave(
     process.exit(1);
   }
 
+  // Sanitize name: only alphanumeric, underscore, and hyphen allowed
+  const sanitizedName = name.replace(/[^a-zA-Z0-9_-]/g, "");
+  if (!sanitizedName) {
+    console.error(json ? JSON.stringify({ error: "Context name must contain valid characters (alphanumeric, underscore, hyphen)" }) : "Error: Context name must contain valid characters (alphanumeric, underscore, hyphen)");
+    process.exit(1);
+  }
+
   const fileList = filesStr
     ? filesStr.split(",").map((f) => f.trim())
     : [];
 
   try {
-    const result = await saveContext(name, fileList, { notes });
+    const result = await saveContext(sanitizedName, fileList, { notes });
 
     if (json) {
       printJson(result);
     } else {
-      console.log(`✓ Context "${name}" saved successfully`);
+      console.log(`✓ Context "${sanitizedName}" saved successfully`);
       if (fileList.length > 0) {
         console.log(`  Files: ${fileList.length}`);
       }
@@ -374,6 +444,12 @@ interface ParsedArgs {
 }
 
 function parseArgs(argv: string[]): ParsedArgs {
+  // Input length validation to prevent DoS
+  const totalLength = argv.join("").length;
+  if (totalLength > 100000) {
+    throw new Error("Input too long (max 100KB)");
+  }
+
   const args: string[] = [];
   const options: Record<string, string | boolean> = {};
   const flags: string[] = [];

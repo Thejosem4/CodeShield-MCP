@@ -97,7 +97,16 @@ server.registerTool(
     }
 
     // Otherwise use standard verifyCode
-    const codeBaseIndex = code_base_index ? JSON.parse(code_base_index) : undefined;
+    let codeBaseIndex;
+    if (code_base_index) {
+      try {
+        codeBaseIndex = JSON.parse(code_base_index);
+      } catch {
+        return {
+          content: [{ type: "text", text: JSON.stringify({ error: "Invalid code_base_index JSON" }, null, 2) }],
+        };
+      }
+    }
     const issues = verifyCode(code, language, codeBaseIndex);
 
     // Return issues as array (backward compatible)

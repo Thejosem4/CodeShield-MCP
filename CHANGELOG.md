@@ -7,6 +7,42 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.6.1] - 2026-04-12 - ALPHA
+
+### Security Fixes
+- 🛡️ **File Locking** (`context-store.ts`) - Race condition protection con acquireLock/releaseLock
+  - Stale lock detection (process.kill(pid, 0))
+  - Lock cleanup automático
+- 🛡️ **Atomic Writes** - temp file + rename para evitar corrupción de datos
+- 🛡️ **ReDoS Prevention** (`detectTyposFromKnown`) - Memoization + early exit + lastIndex reset
+- 🛡️ **JSON.parse Error Handling** (`server.ts`) - try-catch con error response
+- 🛡️ **Cache DoS Protection** (`cache.ts`) - MAX_CACHE_ENTRIES=100 con LRU eviction
+
+### CLI Improvements
+- ✅ **Path Resolution** - fs.realpathSync() para resolver symlinks
+- ✅ **Extension Validation** - Solo archivos .py, .js, .ts, .jsx, .tsx, .java, .cpp, .c, .go, .rs, .rb, .php
+- ✅ **Name Sanitization** - Solo alphanumeric, underscore, hyphen en context names
+- ✅ **Input Length Validation** - 100KB max en CLI
+
+### CVE Database Updated
+- 📦 **21 packages** en database (antes 10+)
+- 🆕 **10 nuevos CVEs 2023-2024**: log4j, postgresql, numpy, pillow, sqlalchemy, redis, tensorflow
+- 📝 Threshold actualizados para numpy y pillow
+
+### Version Handling Fixes
+- ✅ **Pre-release version support** - parseVersionParts() maneja alpha, beta, rc suffixes
+- ✅ **NaN detection** - Ya no convierte silenciosamente a 0
+
+### Testing
+- ✅ **14 new security tests** (`tests/security.test.ts`)
+  - Race condition tests (3)
+  - ReDoS performance tests (3)
+  - Path traversal tests (5)
+  - Input validation tests (3)
+- ✅ **99 total tests passing**
+
+---
+
 ## [0.6.0] - 2026-04-11 - ALPHA
 
 ### Added
