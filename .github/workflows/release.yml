@@ -9,6 +9,10 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
 
+    defaults:
+      run:
+        working-directory: src
+
     steps:
       - uses: actions/checkout@v4
 
@@ -16,16 +20,15 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
           registry-url: 'https://registry.npmjs.org'
 
       - name: Install dependencies
-        run: cd src && npm install
+        run: npm install
 
       - name: Build
-        run: cd src && npm run build
+        run: npm run build
 
       - name: Publish to npm
-        run: cd src && npm publish
+        run: npm publish
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
