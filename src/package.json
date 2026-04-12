@@ -1,6 +1,6 @@
 {
   "name": "codeshield-verify-mcp",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "MCP server and CLI that prevents LLM hallucinations by verifying code against known libraries and frameworks",
   "type": "module",
   "main": "dist/index.js",

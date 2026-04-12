@@ -766,24 +766,38 @@ function detectAllIssues(code: string, language: string): Issue[] {
 
 // === Framework detection patterns ===
 const FRAMEWORK_PATTERNS: Record<string, RegExp[]> = {
+  // === Python ===
   django: [/\b(manage\.py|MIGRATIONS|settings\.py|INSTALLED_APPS|DJANGO_SETTINGS_MODULE)\b/i, /\bDjango\b/i],
+  django_rest: [/\b(ViewSet|ModelSerializer|@api_view|GenericAPIView|ViewSets|REST_FRAMEWORK)\b/i, /\bDjango.*REST\b/i, /\bDRF\b/i],
   flask: [/\b(app\.route|@app|Flask\(|render_template|request\.)/i, /\bFlask\b/i],
-  fastapi: [/\b(@app\.|FastAPI|APIRouter|uvicorn)/i, /\bFastAPI\b/i],
+  fastapi: [/\b(@app\.|FastAPI|APIRouter|uvicorn Depends|BackgroundTasks|WebSocket)/i, /\bFastAPI\b/i],
   fastapi_route: [/@(app|router)\.(get|post|put|delete|patch)\(/i],
+  nestjs: [/\b(@Controller|@Injectable|@Module|NestFactory|@Get|@Post|@Put|@Delete|@Patch)\b/i, /\bNestJS\b/i],
+  // === JavaScript/TypeScript ===
   react: [/\b(useState|useEffect|useRef|Component|jsx|React\.)/i, /\bReact\b/i],
-  nextjs: [/\b(getServerSideProps|getStaticProps|next\/|NextPage|next\/image)/i, /\bNext\.?js\b/i, /\bNextJS\b/i],
+  nextjs: [
+    /\b(getServerSideProps|getStaticProps|next\/|NextPage|next\/image)\b/i,
+    /\b(app\/layout|app\/page|app\/route|server\s*component|client\s*component)\b/i,
+    /\bNext\.?js\b/i, /\bNextJS\b/i,
+    /\b(generateStaticParams|generateMetadata|'use server'|'use client')\b/i,
+    /\b(edge\s*runtime|middleware)\b/i,
+  ],
   nodejs: [/\b(module\.exports|require\(|process\.|__dirname|__filename)/i],
   express: [/\b(app|router)\.(get|post|put|delete|patch|use)\(/i, /\bExpress\b/i, /\bexpress\.js\b/i],
-  nestjs: [/\b(@Controller|@Injectable|@Module|NestFactory)/i, /\bNestJS\b/i],
   typescript: [/\binterface\s+\w+|type\s+\w+\s*=|:\s*(string|number|boolean|any)\b/i, /\bTypeScript\b/i],
+  // === Testing ===
   pytest: [/\bdef test_\w+\(|pytest\.|fixture\(|@pytest\./i, /\bpytest\b/i],
   jest: [/\b(describe|it|test|expect)\s*\(/i, /\bjest\b/i],
   playwright: [/\b(page|expect)\.(click|fill|goTo|waitFor)/i, /\bPlaywright\b/i],
+  // === Data ===
   sqlalchemy: [/\b(from sqlalchemy|import sqlalchemy)\b/i],
   pandas: [/\b(pandas|pd\.read_csv|DataFrame|pd\.DataFrame)\b/i, /\bpandas\b/i],
   numpy: [/\b(numpy|np\.array|np\.zeros|np\.ones|import numpy)\b/i, /\bnumpy\b/i],
   matplotlib: [/\b(import matplotlib|from matplotlib|plt\.)/i, /\bmatplotlib\b/i],
   prisma: [/\b(prisma\.|@prisma|model\s+\w+\s*\{)/i],
+  // === DevOps / Infrastructure ===
+  docker: [/\b(docker-compose|Dockerfile|dockerfile|docker\s+build|docker\s+run)\b/i, /\bFROM\s+\w+/i],
+  kubernetes: [/\b(kubectl|deployment|service\s+\w+|ingress|configmap|secret|pod)\b/i, /\bkubernetes\b/i, /\bk8s\b/i],
 };
 
 // Intention patterns
@@ -797,11 +811,44 @@ const INTENTION_PATTERNS = {
   backend: /\b(server|api|endpoint|route|controller|service|repository|middleware)\b/i,
   data_processing: /\b(csv|excel|parse|filter|map|reduce|aggregate|transform|clean)\b/i,
   file_io: /\b(read|write|open|file|load|save|export)\b/i,
+  // === Architecture patterns ===
+  microservices: /\b(microservice|microservices|service\s*mesh|api\s*gateway|event-driven)\b/i,
+  serverless: /\b(serverless|lambda|cloud\s*function|aws\s*lambda|azure\s*function|google\s*function)\b/i,
+  realtime: /\b(websocket|websockets|real-time|sse|server-sent|pub\/sub|stripe\s*webhook)\b/i,
+  graphql: /\b(graphql|apollo|relay|query|mutation|subscription|gql)\b/i,
+  // === CMS / Content ===
+  cms: /\b(cms|wordpress|drupal|contentful|strapi|headless\s*cms)\b/i,
+  // === E-commerce ===
+  ecommerce: /\b(ecommerce|shopify|woocommerce|magento|prestashop|cart|checkout|payment|stripe)\b/i,
 };
 
 // === JavaScript/TypeScript imports ===
 import { verifyJavaScript, extractJSImports, fixJavaScript } from "./javascript.js";
 import { verifyTypeScript, fixTypeScript } from "./typescript.js";
+
+// === Code pattern detection ===
+export interface CodePatterns {
+  crud: boolean;
+  api: boolean;
+  auth: boolean;
+  database: boolean;
+}
+
+/**
+ * Detecta patrones de codigo: CRUD, API, auth, database
+ */
+export function detectCodePatterns(code: string): CodePatterns {
+  const patterns = {
+    crud: /\b(SELECT|INSERT|UPDATE|DELETE|CREATE|READ|UPDATE|DELETE)\b/i.test(code) ||
+              /\b(findAll|findOne|create|update|delete|remove|get|post|put|patch|delete)\b/i.test(code),
+    api: /\b(fetch|axios|request|response|endpoint|route|api|router|http)\b/i.test(code) ||
+            /\b(REST|GraphQL|grpc)\b/i.test(code),
+    auth: /\b(auth|login|password|token|jwt|oauth|session|permission|role|bcrypt|hash)\b/i.test(code),
+    database: /\b(query|select|insert|update|delete|table|schema|migration|model|entity)\b/i.test(code) ||
+              /\b(sql|mongodb|postgres|mysql|redis)\b/i.test(code),
+  };
+  return patterns;
+}
 
 // === Funciones públicas ===
 
