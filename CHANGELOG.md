@@ -7,6 +7,40 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.6.3] - 2026-04-13 - ALPHA
+
+### New Language Detection Modules
+
+- 🆕 **Go (Golang)** - `go.ts`
+  - 16+ stdlib packages: fmt, os, io, strings, strconv, time, json, errors, sync, context, http, flag, log, bytes, path, bufio, math, sort, unicode, container/list
+  - Common typos detection: fmt.Printf, os.Open, make, append, len, iota
+  - Auto-fix support
+
+- 🆕 **Rust** - `rust.ts`
+  - 30+ stdlib crates: std, vec, string, option, result, collections, hashmap, hashset, fs, path, env, process, thread, sync, time, error, fmt, io
+  - Keyword typos: mut, ref, let, fn, pub, impl, struct, enum, trait, use
+  - Auto-fix support
+
+- 🆕 **React** - `react.ts`
+  - Hooks: useState, useEffect, useCallback, useMemo, useRef, useContext, useReducer, useLayoutEffect, useImperativeHandle, useDebugValue
+  - Component types: Component, PureComponent, FC, FunctionComponent
+  - React APIs: createElement, cloneElement, Fragment, StrictMode, Children, Suspense, lazy
+  - Framework detection: Next.js, CRA, Remix, Gatsby
+
+- 🆕 **Angular** - `angular.ts`
+  - Decorators: @NgModule, @Component, @Injectable, @Pipe, @Directive, @Input, @Output, @ViewChild
+  - Lifecycle hooks: ngOnInit, ngOnDestroy, ngOnChanges, ngAfterViewInit
+  - Pipes: AsyncPipe, DecimalPipe, CurrencyPipe, DatePipe, JsonPipe
+  - Forms: FormControl, FormGroup, FormArray, FormBuilder, Validators
+  - RxJS: Observable, BehaviorSubject, Subject, Subscription
+
+### Integration
+- ✅ All new modules integrated into `detectAllIssues()`
+- ✅ Auto-fix functions connected for Go and Rust
+- ✅ 99 tests passing
+
+---
+
 ## [0.6.2] - 2026-04-12 - ALPHA
 
 ### JS/TS Stdlib Expansion

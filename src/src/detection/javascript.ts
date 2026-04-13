@@ -23,6 +23,7 @@ export const JS_STDLIB: Record<string, Set<string>> = {
     "reduce", "reduceRight", "find", "findIndex", "includes", "indexOf",
     "lastIndexOf", "every", "some", "sort", "reverse", "join", "concat",
     "length", "isArray", "forEach", "fill", "copyWithin", "entries", "keys", "values",
+    "findLast", "findLastIndex", "toSorted", "toReversed", "with", "at",
   ]),
   Object: new Set([
     "keys", "values", "entries", "assign", "create", "freeze", "seal",
@@ -56,12 +57,25 @@ export const JS_STDLIB: Record<string, Set<string>> = {
   ReferenceError: new Set(["name", "message"]),
   SyntaxError: new Set(["name", "message"]),
   RangeError: new Set(["name", "message"]),
+  // Node.js fs Promise-based methods
+  fs: new Set(["readFile", "writeFile", "appendFile", "readdir", "mkdir", "rm", "rmdir", "access", "stat", "lstat", "readlink", "symlink", "copyFile", "unlink", "rename", "truncate", "open", "close", "read", "write"]),
+  path: new Set(["join", "resolve", "normalize", "dirname", "basename", "extname", "relative", "isAbsolute", "parse", "format", "sep", "delimiter", "POSIX", "win32"]),
+  util: new Set(["types", "inspect", "format", "promisify", "callbackify", "deprecate", "textEncoder", "textDecoder"]),
+  events: new Set(["on", "once", "emit", "addListener", "removeListener", "removeAllListeners", "listenerCount", "listenerLogs"]),
+  stream: new Set(["pipe", "on", "once", "destroy", "cork", "uncork", "read", "write", "push", "pull"]),
+  http: new Set(["request", "get", "Server", "createServer", "Agent", "getAgent"]),
+  https: new Set(["request", "get", "createServer", "createServer", "Agent", "getAgent"]),
 };
 
 // Known JavaScript typos
 export const JS_TYPOS: Record<string, Record<string, string>> = {
   console: { logg: "log", errror: "error", warng: "warn", infor: "info" },
-  array: { lenght: "length", getItem: "at", removeItem: "splice" },
+  array: {
+    lenght: "length", getItem: "at", removeItem: "splice",
+    sumArray: "reduce", countArray: "filter", map_items: "map",
+    findLast_: "findLast", toSorted_: "toSorted", toReversed_: "toReversed",
+    getFirst: "at(0)", getLast: "at(-1)",
+  },
   string: { lengh: "length", charAt_: "charAt", subStr: "substr" },
   object: { keys_: "keys", values_: "values", entries_: "entries" },
   math: { sqrtt: "sqrt", poww: "pow", abbbs: "abs" },

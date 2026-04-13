@@ -61,6 +61,33 @@ const STDLIB_FUNCTIONS: Record<string, Set<string>> = {
   ]),
 };
 
+// Rust stdlib modules
+const RUST_STDLIB_MODULES = new Set([
+  "std", "fmt", "vec", "string", "io", "result", "option", "collections",
+  "fs", "path", "env", "process", "thread", "sync", "time", "net", "io",
+  "error", "slice", "str", "convert", "marker", "ptr", "alloc", "rc", "cell",
+  "borrow", "traits", "ops", "mem", "intrinsics", "raw", "simd", "zeroable",
+]);
+
+// Rust-specific function patterns
+const RUST_STDLIB_FUNCTIONS: Record<string, Set<string>> = {
+  std: new Set([
+    "println", "print", "eprintln", "eprint", "format", "panic", "assert", "assert_eq", "assert_ne",
+    "dbg", "todo", "unimplemented", "unreachable", "abort", "exit", "drop",
+  ]),
+  vec: new Set(["new", "with_capacity", "push", "pop", "insert", "remove", "len", "is_empty", "clear"]),
+  string: new Set(["new", "from", "from_utf8", "push", "push_str", "len", "is_empty", "clear"]),
+  io: new Set(["stdin", "stdout", "stderr", "Read", "Write", "BufRead"]),
+  result: new Set(["Ok", "Err", "is_ok", "is_err", "unwrap", "expect", "unwrap_or", "unwrap_or_else"]),
+  option: new Set(["Some", "None", "is_some", "is_none", "unwrap", "expect", "unwrap_or", "unwrap_or_else"]),
+  collections: new Set(["HashMap", "HashSet", "BTreeMap", "BTreeSet", "VecDeque"]),
+  fs: new Set(["read_to_string", "write", "read", "copy", "create_dir", "remove_file"]),
+  path: new Set(["Path", "PathBuf", "new", "from", "join", "extension", "file_name"]),
+  env: new Set(["args", "vars", "current_dir", "set_var", "get_var"]),
+  process: new Set(["exit", "Command", "id", "kill"]),
+  thread: new Set(["spawn", "sleep", "current", "park", "unpark"]),
+};
+
 // Known typos - expanded coverage
 const KNOWN_TYPOS: Record<string, string[]> = {
   // Built-in functions
@@ -136,7 +163,6 @@ const KNOWN_TYPOS: Record<string, string[]> = {
   // Common typos in code
   True: ["Truue", "Ture", "Treu"],
   False: ["Fase", "Faluse", "Flase"],
-  None: ["Nonde", "Noen", "Null"],
   self: ["selff", "slf", "slef"],
 
   // Django framework typos
@@ -149,6 +175,13 @@ const KNOWN_TYPOS: Record<string, string[]> = {
   "on_delete": ["ondelete", "on_delete"],
   "null=True": ["null_true", "null=>True"],
   "blank=True": ["blanktrue", "blank=>True"],
+  // Django REST typos
+  "ModelSerializer": ["ModelSerializerr", "ModelSerializzer", "modelSerializer"],
+  "Serializer": ["Serializerr", "Serializzer", "serializzer"],
+  "ViewSet": ["Viewsett", "ViewSettt", "viewsett"],
+  "GenericAPIView": ["GenericAPIViiew", "GenericAPIview", "genericAPIView"],
+  "api_view": ["api_viiew", "apiview"],
+  "ViewSets": ["ViewSetss", "viewSets"],
 
   // Flask framework typos
   "render_template": ["renderTemplate", "render_template", "renderTempate"],
@@ -179,6 +212,30 @@ const KNOWN_TYPOS: Record<string, string[]> = {
   "fillna": ["fill_na", "filna"],
   "reset_index": ["resetindex", "reset_indx"],
   "groupby": ["group_by", "grpupby"],
+
+  // === Rust ===
+  unwrap: ["unrap", "unwrp", "unwraped"],
+  collect: ["colllect", "collectt", "colleect"],
+  println: ["printnln", "printn", "prntln", "println"],
+  mut: ["muut", "mutt"],
+  Some: ["Somme", "Somo", "somee"],
+  Ok: ["Oky", "Okk", "oK"],
+  Err: ["Erro", "Errr", "err"],
+  vec: ["vecc", "vexc"],
+  String: ["Strring", "Strimg"],
+  Result: ["Resuilt", "Resultt"],
+  Option: ["Optiion", "Optoin"],
+  match: ["matck", "mtach", "mach"],
+  where: ["wher", "wheree", "wehre"],
+  impl: ["immp", "impll"],
+  pub: ["puub", "pubb"],
+  fn: ["fnn", "funtion"],
+  let: ["leet", "lte"],
+  use: ["uuse", "uss"],
+  mod: ["md", "modd"],
+  struct: ["struck", "strct", "structt"],
+  enum: ["ennum", "enumt"],
+  trait: ["traitt", "trait"],
 };
 
 // Tipos para resultados
@@ -759,6 +816,14 @@ function detectAllIssues(code: string, language: string): Issue[] {
     issues.push(...verifyJavaScript(code));
   } else if (language === "typescript") {
     issues.push(...verifyTypeScript(code));
+  } else if (language === "react") {
+    issues.push(...detectReactIssues(code));
+  } else if (language === "angular") {
+    issues.push(...detectAngularIssues(code));
+  } else if (language === "go") {
+    issues.push(...detectGoIssues(code));
+  } else if (language === "rust") {
+    issues.push(...detectRustIssues(code));
   }
 
   return issues;
@@ -825,6 +890,10 @@ const INTENTION_PATTERNS = {
 // === JavaScript/TypeScript imports ===
 import { verifyJavaScript, extractJSImports, fixJavaScript } from "./javascript.js";
 import { verifyTypeScript, fixTypeScript } from "./typescript.js";
+import { verifyReact, detectReactIssues } from "./react.js";
+import { detectAngularIssues } from "./angular.js";
+import { verifyGo, detectGoIssues, fixGo } from "./go.js";
+import { verifyRust, detectRustIssues, fixRust } from "./rust.js";
 
 // === Code pattern detection ===
 export interface CodePatterns {
@@ -984,6 +1053,10 @@ export function verifyAndFix(
     fixedCode = fixJavaScript(code);
   } else if (detectedLanguage === "typescript") {
     fixedCode = fixTypeScript(code);
+  } else if (detectedLanguage === "go") {
+    fixedCode = fixGo(code);
+  } else if (detectedLanguage === "rust") {
+    fixedCode = fixRust(code);
   }
 
   // Count how many fixes were applied
