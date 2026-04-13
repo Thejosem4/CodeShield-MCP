@@ -5,13 +5,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/typescript-5.3-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/node-20+-green.svg)](https://nodejs.org/)
-[![npm](https://img.shields.io/badge/npm-v0.6.1-red.svg)](https://www.npmjs.com/package/codeshield-verify-mcp)
+[![npm](https://img.shields.io/badge/npm-v0.6.3-red.svg)](https://www.npmjs.com/package/codeshield-verify-mcp)
 
 ---
 
 ## Estado Actual
 
-**Versión:** 0.6.1 (ALPHA) - [npm package](https://www.npmjs.com/package/codeshield-verify-mcp)
+**Versión:** 0.6.3 (ALPHA) - [npm package](https://www.npmjs.com/package/codeshield-verify-mcp)
 
 ### Modos de Uso
 
@@ -25,7 +25,7 @@
 | Herramienta | Descripción |
 |-------------|-------------|
 | `analyze_prompt` | Analiza prompts, detecta frameworks e intenciones |
-| `verify_code` | Verifica código generado (Python, JS, TS) |
+| `verify_code` | Verifica código generado (Python, JS, TS, Go, Rust, React, Angular) |
 | `suggest_similar_name` | Sugiere correcciones para typos |
 | `fix_code` | Corrige automáticamente errores |
 | `index_project` | Indexa proyecto con cache en memoria |
@@ -102,7 +102,9 @@ npm test  # 99 tests incluyendo 14 de seguridad
 |---------|-------|--------|
 | **0.6.0** | CLI, Context, Audit Deps, Security | ✅ Published |
 | **0.6.1** | Security fixes, file locking, CLI validation | ✅ Published |
-| **0.6.2+** | Mejoras de detección | 🔲 Pendiente |
+| **0.6.2** | JS/TS stdlib expansion, prompt analysis | ✅ Published |
+| **0.6.3** | Go, Rust, React, Angular detection | ✅ Published |
+| **0.6.4+** | Mejoras de detección | 🔲 Pendiente |
 
 ---
 
