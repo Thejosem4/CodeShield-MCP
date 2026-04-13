@@ -10,12 +10,31 @@ import { z } from "zod";
 
 import {
   analyzePrompt,
-  verifyCode,
+  verifyCode as verifyCodeDetection,
   verifyAndFix,
   suggestSimilar,
   autoFix,
   indexProject,
 } from "./detection/index.js";
+
+import {
+  verifyCode,
+  checkImports,
+  suggestFix,
+  quickFix,
+  type Issue,
+  type VerificationResult,
+} from "./verification/index.js";
+
+import { deepFix } from "./fix-intelligence/index.js";
+
+import {
+  checkOllamaStatus,
+  runOllamaTests,
+  CheckOllamaStatusSchema,
+  RunOllamaTestsSchema,
+  runComprehensiveAnalysis,
+} from "./testing/index.js";
 
 import {
   getCachedIndex,
@@ -41,8 +60,43 @@ const AnalyzePromptSchema = z.object({
 const VerifyCodeSchema = z.object({
   code: z.string().max(MAX_INPUT_SIZE),
   language: z.string().optional(),
-  code_base_index: z.string().max(MAX_INPUT_SIZE).optional(),
-  auto_fix: z.boolean().optional(),
+  check_level: z.enum(["fast", "standard", "thorough"]).optional(),
+});
+
+const SuggestFixSchema = z.object({
+  code: z.string().max(MAX_INPUT_SIZE),
+  issue: z.object({
+    line: z.number(),
+    message: z.string(),
+    suggestion: z.string().optional(),
+  }),
+  language: z.string(),
+});
+
+const CheckImportsSchema = z.object({
+  code: z.string().max(MAX_INPUT_SIZE),
+  language: z.string(),
+  project_path: z.string().optional(),
+});
+
+const QuickFixSchema = z.object({
+  code: z.string().max(MAX_INPUT_SIZE),
+  language: z.string(),
+  auto_apply: z.array(z.string()).optional(),
+});
+
+const DeepFixSchema = z.object({
+  code: z.string().max(MAX_INPUT_SIZE),
+  language: z.string(),
+  issues: z.array(z.object({
+    line: z.number(),
+    message: z.string(),
+    type: z.string(),
+    severity: z.string().optional().default("warning"),
+    suggestion: z.string().optional(),
+  })),
+  project_path: z.string().optional(),
+  mode: z.enum(["safe", "suggest", "full"]).optional().default("suggest"),
 });
 
 const SuggestSimilarSchema = z.object({
@@ -80,39 +134,113 @@ server.registerTool(
   }
 );
 
-// Tool: verify_code
+// Tool: verify_code (local verification - no tokens)
 server.registerTool(
   "verify_code",
   {
-    description: "Verifica código generado contra el codebase real indexado.",
+    description: "Verifica código en local (0 tokens) para errores de sintaxis, typos, imports faltantes. Soporta: javascript, typescript, python, rust, go, react, angular.",
     inputSchema: VerifyCodeSchema,
   },
-  async ({ code, language = "python", code_base_index = "", auto_fix = false }) => {
-    // If auto_fix is enabled, use verifyAndFix
-    if (auto_fix) {
-      const result = verifyAndFix(code, language);
+  async ({ code, language = "python", check_level }) => {
+    try {
+      const result = verifyCode(code, language, { checkLevel: check_level });
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }, null, 2) }],
+      };
     }
+  }
+);
 
-    // Otherwise use standard verifyCode
-    let codeBaseIndex;
-    if (code_base_index) {
-      try {
-        codeBaseIndex = JSON.parse(code_base_index);
-      } catch {
+// Tool: suggest_fix
+server.registerTool(
+  "suggest_fix",
+  {
+    description: "Sugiere una corrección específica para un issue detectado.",
+    inputSchema: SuggestFixSchema,
+  },
+  async ({ code, issue, language }) => {
+    try {
+      const result = suggestFix(code, language, issue);
+      if (!result) {
         return {
-          content: [{ type: "text", text: JSON.stringify({ error: "Invalid code_base_index JSON" }, null, 2) }],
+          content: [{ type: "text", text: JSON.stringify({ error: "No suggestion available for this issue" }, null, 2) }],
         };
       }
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }, null, 2) }],
+      };
     }
-    const issues = verifyCode(code, language, codeBaseIndex);
+  }
+);
 
-    // Return issues as array (backward compatible)
-    return {
-      content: [{ type: "text", text: JSON.stringify(issues, null, 2) }],
-    };
+// Tool: check_imports
+server.registerTool(
+  "check_imports",
+  {
+    description: "Verifica que los imports en el código existan en el stdlib o proyecto.",
+    inputSchema: CheckImportsSchema,
+  },
+  async ({ code, language, project_path }) => {
+    try {
+      const result = checkImports(code, language, project_path);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }, null, 2) }],
+      };
+    }
+  }
+);
+
+// Tool: quick_fix
+server.registerTool(
+  "quick_fix",
+  {
+    description: "Aplica correcciones automáticas para issues comunes (typos, etc).",
+    inputSchema: QuickFixSchema,
+  },
+  async ({ code, language, auto_apply = [] }) => {
+    try {
+      const result = quickFix(code, language, auto_apply);
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }, null, 2) }],
+      };
+    }
+  }
+);
+
+// Tool: deep_fix
+server.registerTool(
+  "deep_fix",
+  {
+    description: "Sugiere fixes enriquecidos usando contexto del proyecto y stdlib. 100% local. Recibe issues de verify_code y devuelve sugerencias con locations.",
+    inputSchema: DeepFixSchema,
+  },
+  async ({ code, language, issues, project_path, mode = "suggest" }) => {
+    try {
+      const result = deepFix({ code, language, issues, project_path, mode });
+      return {
+        content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }, null, 2) }],
+      };
+    }
   }
 );
 
@@ -214,6 +342,68 @@ server.registerTool(
     return {
       content: [{ type: "text", text: JSON.stringify({ success: true }, null, 2) }],
     };
+  }
+);
+
+// Tool: check_ollama_status
+server.registerTool(
+  "check_ollama_status",
+  {
+    description: "Verifica si Ollama está corriendo y el modelo qwen2.5-coder:7b está disponible",
+    inputSchema: CheckOllamaStatusSchema,
+  },
+  async () => {
+    const status = await checkOllamaStatus();
+    return {
+      content: [{ type: "text", text: JSON.stringify(status, null, 2) }],
+    };
+  }
+);
+
+// Tool: run_ollama_tests
+server.registerTool(
+  "run_ollama_tests",
+  {
+    description: "Ejecuta tests impulsados por IA local (Ollama) en código para detectar errores de seguridad, funcionales y mal funcionamiento. Modes: quick (critical only), standard (normal), deep (full analysis), audit (security + quality).",
+    inputSchema: RunOllamaTestsSchema,
+  },
+  async ({ code, file, project_dir, categories, auto_fix, model, timeout, mode = "standard", report }) => {
+    try {
+      // Run comprehensive pattern analysis first
+      const patternIssues = code ? runComprehensiveAnalysis(code) : [];
+
+      // Run Ollama tests
+      const result = await runOllamaTests({ code, file, project_dir, categories, auto_fix, model, timeout, mode, report });
+
+      // Merge pattern analysis results with AI results
+      const mergedResults = [...patternIssues, ...result.results];
+
+      const mergedSummary = {
+        total: mergedResults.length,
+        critical: mergedResults.filter(i => i.severity === "CRITICAL").length,
+        high: mergedResults.filter(i => i.severity === "HIGH").length,
+        medium: mergedResults.filter(i => i.severity === "MEDIUM").length,
+        low: mergedResults.filter(i => i.severity === "LOW").length,
+        info: mergedResults.filter(i => i.severity === "INFO").length,
+        auto_fixed: result.summary.auto_fixed,
+      };
+
+      return {
+        content: [{
+          type: "text",
+          text: JSON.stringify({
+            ...result,
+            results: mergedResults,
+            summary: mergedSummary,
+            pattern_analysis_count: patternIssues.length,
+          }, null, 2),
+        }],
+      };
+    } catch (error) {
+      return {
+        content: [{ type: "text", text: JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }, null, 2) }],
+      };
+    }
   }
 );
 

@@ -26,10 +26,12 @@ CLAUDE.md
 .codeshield/
 .codeshield.yaml
 
-# Distribution
-dist/
-build/
-*.egg-info/
+# Ollama Testing Agent (development only, not for GitHub)
+src/src/testing/
+codeshield-test.ps1
+codeshield-test.bat
+reports/
+models/*.Modelfile
 
 # MCP specific
 .mcp/

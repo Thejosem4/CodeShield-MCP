@@ -7,6 +7,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { verifyCode, autoFix, scanProject } from "./detection/index.js";
+import { checkOllamaStatus, runOllamaTests } from "./testing/index.js";
 import {
   saveContext,
   listContexts,
@@ -46,6 +47,16 @@ interface ContextListOptions extends GlobalFlags {}
 interface ContextRestoreOptions extends GlobalFlags {}
 
 interface ContextDeleteOptions extends GlobalFlags {}
+
+interface TestOptions extends GlobalFlags {
+  category?: string;
+  model?: string;
+  timeout?: number;
+  auto_fix?: boolean;
+  status?: boolean;
+  mode?: "quick" | "standard" | "deep" | "audit";
+  report?: "bug" | "security" | "coverage" | "quality" | "recommendations";
+}
 
 // === Output Formatters ===
 
@@ -434,6 +445,194 @@ async function handleServe(
   // Note: server runs until killed, this await won't resolve
 }
 
+async function handleTest(
+  filePath: string,
+  options: TestOptions,
+  _flags: string[]
+): Promise<void> {
+  const { category, model, timeout, auto_fix, json, quiet, mode = "standard", report } = options;
+  const startTime = Date.now();
+
+  // Handle --status flag for checking Ollama status
+  if (options["status"] === true || filePath === "--status") {
+    const status = await checkOllamaStatus();
+
+    if (json) {
+      printJson(status);
+    } else {
+      console.log("\n── Ollama Status ────────────────────────");
+      console.log(`  Available: ${status.available ? "Yes" : "No"}`);
+      console.log(`  Model: ${status.model_name}`);
+      console.log(`  Model Loaded: ${status.model_loaded ? "Yes" : "No"}`);
+      if (status.error) {
+        console.log(`  Error: ${status.error}`);
+      }
+      if (status.ollama_version) {
+        console.log(`  Version: ${status.ollama_version}`);
+      }
+    }
+    return;
+  }
+
+  // Validate file path
+  if (!filePath) {
+    const msg = json
+      ? JSON.stringify({ error: "File path required. Use --status to check Ollama status." })
+      : "Error: File path required. Use --status to check Ollama status.";
+    console.error(msg);
+    process.exit(1);
+  }
+
+  if (!fs.existsSync(filePath)) {
+    const msg = json
+      ? JSON.stringify({ error: `File not found: ${filePath}` })
+      : `Error: File not found: ${filePath}`;
+    console.error(msg);
+    process.exit(1);
+  }
+
+  // Check if it's a directory - if so, we'll scan files
+  let isDirectory = false;
+  try {
+    isDirectory = fs.statSync(filePath).isDirectory();
+  } catch {}
+
+  // Parse categories
+  const validCategories: Array<"security" | "functional" | "malfunction" | "quality"> = [
+    "security", "functional", "malfunction", "quality"
+  ];
+  const categories = category
+    ? category.split(",").map((c) => c.trim()).filter((c): c is typeof validCategories[number] => validCategories.includes(c as any))
+    : validCategories;
+
+  if (isDirectory) {
+    // Scan all TypeScript/JavaScript files in directory
+    const exts = [".ts", ".tsx", ".js", ".jsx"];
+    const files = fs.readdirSync(filePath, { recursive: true })
+      .filter((f: string | Buffer) => exts.some(ext => String(f).endsWith(ext)))
+      .slice(0, 20); // Limit to 20 files for now
+
+    const allResults: any[] = [];
+    const startTime = Date.now();
+
+    for (const file of files) {
+      const fullPath = path.join(filePath, String(file));
+      try {
+        const code = fs.readFileSync(fullPath, "utf-8");
+        const result = await runOllamaTests({
+          code,
+          file: fullPath,
+          categories,
+          auto_fix: auto_fix ?? false,
+          model: model ?? "qwen2.5-coder:7b",
+          timeout: timeout ?? 60,
+          mode: mode as any,
+          report: report as any,
+        });
+        allResults.push(...result.results);
+      } catch {
+        // Skip files that fail
+      }
+    }
+
+    const summary = {
+      total: allResults.length,
+      critical: allResults.filter(i => i.severity === "CRITICAL").length,
+      high: allResults.filter(i => i.severity === "HIGH").length,
+      medium: allResults.filter(i => i.severity === "MEDIUM").length,
+      low: allResults.filter(i => i.severity === "LOW").length,
+      info: allResults.filter(i => i.severity === "INFO").length,
+      auto_fixed: 0,
+    };
+
+    if (json) {
+      printJson({
+        directory: filePath,
+        files_scanned: files.length,
+        model: "qwen2.5-coder:7b",
+        mode: mode,
+        issues: allResults,
+        summary,
+        elapsed_ms: Date.now() - startTime,
+      });
+    } else {
+      console.log(`\n── Ollama Test Results ───────────────────`);
+      console.log(`  Directory: ${filePath}`);
+      console.log(`  Files scanned: ${files.length}`);
+      console.log(`  Model: qwen2.5-coder:7b`);
+      console.log(`  Mode: ${mode}`);
+      console.log(`\n── Summary ───────────────────────────────`);
+      console.log(`  Total: ${summary.total} | Critical: ${summary.critical} | High: ${summary.high} | Medium: ${summary.medium}`);
+    }
+    return;
+  }
+
+  try {
+    const code = fs.readFileSync(filePath, "utf-8");
+    const result = await runOllamaTests({
+      code,
+      file: filePath,
+      categories,
+      auto_fix: auto_fix ?? false,
+      model: model ?? "qwen2.5-coder:7b",
+      timeout: timeout ?? 60,
+      mode,
+      report,
+    });
+
+    if (json) {
+      printJson({
+        file: filePath,
+        model: result.ollama_model,
+        mode: result.mode,
+        report_type: result.report_type,
+        issues: result.results,
+        summary: result.summary,
+        elapsed_ms: result.elapsed_ms,
+      });
+    } else {
+      if (!quiet) {
+        console.log(`\n── Ollama Test Results ───────────────────`);
+        console.log(`  File: ${filePath}`);
+        console.log(`  Model: ${result.ollama_model}`);
+        console.log(`  Mode: ${result.mode}`);
+        console.log(`  Time: ${result.elapsed_ms}ms`);
+      }
+
+      console.log(`\n── Summary ───────────────────────────────`);
+      console.log(`  Total: ${result.summary.total}`);
+      console.log(`  Critical: ${result.summary.critical}`);
+      console.log(`  High: ${result.summary.high}`);
+      console.log(`  Medium: ${result.summary.medium}`);
+      console.log(`  Low: ${result.summary.low}`);
+      console.log(`  Info: ${result.summary.info}`);
+
+      if (result.results.length > 0) {
+        console.log(`\n── Issues ─────────────────────────────────`);
+        for (const issue of result.results) {
+          console.log(`  [${issue.severity}] ${issue.category}: ${issue.description}`);
+          if (issue.location.line) {
+            console.log(`    Location: line ${issue.location.line}`);
+          }
+          if (issue.suggestion) {
+            console.log(`    Suggestion: ${issue.suggestion}`);
+          }
+        }
+      } else {
+        console.log("\n  No issues found");
+      }
+    }
+
+    printMetrics(startTime, result.summary.total, quiet, json);
+  } catch (error) {
+    const msg = json
+      ? JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" })
+      : `Error: ${error instanceof Error ? error.message : "Unknown error"}`;
+    console.error(msg);
+    process.exit(1);
+  }
+}
+
 // === CLI Parser ===
 
 interface ParsedArgs {
@@ -519,6 +718,7 @@ async function run(): Promise<void> {
           "context list": "List saved contexts",
           "context restore <name>": "Restore a context",
           "context delete <name>": "Delete a context",
+          "test <file> [--status]": "Run Ollama-powered tests on code",
           "serve": "Start the MCP server",
           "--version": "Show version",
         },
@@ -557,6 +757,11 @@ Commands:
   context delete <name>
     Delete a saved context
 
+  test <file> [--status] [--mode quick|standard|deep|audit] [--report bug|security|coverage|quality|recommendations]
+    Run AI-powered Ollama tests on code. Use --status to check Ollama availability.
+    Modes: quick (critical only), standard (normal), deep (full analysis), audit (security + quality)
+    Reports: bug, security, coverage, quality, recommendations
+
   serve
     Start the CodeShield MCP server
 
@@ -569,6 +774,9 @@ Examples:
   codeshield verify myfile.py --language python
   codeshield scan ./src --extensions .ts,.js --json
   codeshield explain script.ts
+  codeshield test myfile.ts --mode deep --report security
+  codeshield test src/server.ts --mode audit
+  codeshield test --status
   codeshield context save my-feature --files "a.py,b.py" --notes "WIP"
 `);
     }
@@ -610,6 +818,9 @@ Examples:
       break;
     case "serve":
       await handleServe(args, flags);
+      break;
+    case "test":
+      await handleTest(args[0], options as unknown as TestOptions, flags);
       break;
     default:
       console.error(json ? JSON.stringify({ error: `Unknown command: ${command}` }) : `Error: Unknown command: ${command}. Use 'codeshield help' for usage.`);

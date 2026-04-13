@@ -7,6 +7,105 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
+## [0.6.5] - 2026-04-14 - ALPHA
+
+### Fix Intelligence Layer
+
+- 🆕 **deep_fix MCP tool** - Sugiere fixes enriquecidos con contexto
+  - Busca typos conocidos (console.logg → console.log)
+  - Busca en project index (direct match, 95% confidence)
+  - Busca en stdlib (90% confidence)
+  - Fuzzy matching con Levenshtein (60-89%)
+  - Pattern extraction de código similar (40-59%)
+  - Fallback con hints manuales (<40%)
+
+- 🆕 **Fix Intelligence modules**
+  - `fix-intelligence/types.ts` - Interfaces y tipos
+  - `fix-intelligence/lookup.ts` - Project + stdlib lookups
+  - `fix-intelligence/fuzzy.ts` - Levenshtein matching
+  - `fix-intelligence/pattern.ts` - Code pattern extraction
+  - `fix-intelligence/engine.ts` - Orchestration engine
+
+### Ollama Testing Agent - Enhanced
+
+- 🆕 **Specialized prompts** por categoría:
+  - `security` - Detecta OWASP Top 10, inyecciones, XSS, credenciales
+  - `functional` - Detecta errores lógicos, off-by-one, boundary errors
+  - `malfunction` - Detecta resource leaks, timeouts, race conditions
+  - `quality` - Detecta code smells, complejidad, maintainability
+
+- 🆕 **Model support** con warm-up inteligente:
+  - `qwen2.5-coder:7b` - Fast triage
+  - `deepseek-r1:7b` - Reasoning y análisis profundo
+  - `ministral-3:8b` - Deep analysis (disponible con suficiente RAM)
+
+- 🛡️ **Robust parsing** - Maneja respuestas JSON y texto plano
+- ⏱️ **Extended timeouts** - 5 min para carga, 3 min para inferencia
+- ✅ **100% local** - Sin APIs externas, usa Ollama local
+
+- 🔍 **Issues detectados exitosamente** en server.ts:
+  - 4x CRITICAL security issues (SQL injection, XSS, command injection)
+
+- ✅ 100% local - sin Ollama ni APIs externas
+
+---
+
+## [0.6.4] - 2026-04-13 - ALPHA
+
+### Verification Engine (Unified API for MCP)
+
+- 🆕 **Centralized verification** - `verification/index.ts` delegates to detection modules
+  - No reimplemented logic - uses existing `detection/*.ts` as source of truth
+  - Unified `Issue` format for all languages
+  - Response time: < 50ms (local, 0 tokens)
+
+- 🆕 **MCP Tools** - Local verification for Claude Code/Gemini CLI
+  - `verify_code` - Verifies syntax, typos, imports (all languages)
+  - `suggest_fix` - Returns exact fix for an issue
+  - `check_imports` - Validates imports against stdlib
+  - `quick_fix` - Applies automatic fixes for common issues
+
+- 🆕 **Supported Languages** (all via detection modules):
+  - JavaScript/JSX/MJS
+  - TypeScript/TSX/MTS
+  - Python
+  - Rust
+  - Go
+  - React
+  - Angular
+
+### Architecture Improvements
+
+- ✅ `verification/index.ts` → delegates to `detection/*.js`
+- ✅ `server.ts` → uses verification API for local tools
+- ✅ Duplicate detection logic removed
+
+### Prompt Analysis Enhancements
+
+- 🆕 **Security requirements detection**
+  - authentication, authorization, input_validation, encryption
+  - sql_injection, xss, csrf, secrets
+  - Each with actionable suggestions
+
+- 🆕 **Architecture hints**
+  - repository, factory, mvc, clean_architecture
+  - cqrs, adapter, facade, observer patterns
+  - Components for each pattern
+
+- 🆕 **Clarity scoring** (0-100)
+  - Vague prompts: clarity_score < 60
+  - Indicators: short length, no imports, no action verbs
+
+- 🆕 **Improved prompt generation**
+  - Hints added to vague prompts
+  - Framework suggestions if missing
+
+- 🆕 **Clarifying questions** (1-6 questions)
+  - Only generated when `is_vague: true`
+  - Context-aware based on missing info
+
+---
+
 ## [0.6.3] - 2026-04-13 - ALPHA
 
 ### New Language Detection Modules

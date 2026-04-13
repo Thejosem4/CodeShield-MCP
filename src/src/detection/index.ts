@@ -262,6 +262,27 @@ export interface AnalysisResult {
   language: string;
   detected_frameworks?: string[];
   detected_intentions?: string[];
+  // New fields for v0.6.4
+  security_requirements?: SecurityRequirement[];
+  architecture_hints?: ArchitectureHint[];
+  improved_prompt?: string;
+  clarifying_questions?: string[];
+  clarity_score?: number; // 0-100
+  is_vague?: boolean;
+}
+
+export interface SecurityRequirement {
+  type: "authentication" | "authorization" | "input_validation" | "encryption" | "sql_injection" | "xss" | "csrf" | "secrets";
+  mentioned: boolean;
+  details: string;
+  suggestion?: string;
+}
+
+export interface ArchitectureHint {
+  pattern: "repository" | "factory" | "mvc" | "clean_architecture" | "cqrs" | "event_sourcing" | "adapter" | "facade" | "observer";
+  mentioned: boolean;
+  details: string;
+  components?: string[];
 }
 
 export interface IndexResult {
@@ -887,6 +908,78 @@ const INTENTION_PATTERNS = {
   ecommerce: /\b(ecommerce|shopify|woocommerce|magento|prestashop|cart|checkout|payment|stripe)\b/i,
 };
 
+// Security requirement patterns
+const SECURITY_PATTERNS: Record<string, { pattern: RegExp; suggestion: string }> = {
+  authentication: {
+    pattern: /\b(login|signup|signin|signout|register|authenticate|password|credential|username|email|password)\b/i,
+    suggestion: "Consider using a secure authentication library (e.g., passport.js, next-auth, Auth.js)",
+  },
+  authorization: {
+    pattern: /\b(permission|role|admin|user\s*role|privilege|authorize|access\s*control|rbac|acl)\b/i,
+    suggestion: "Implement role-based access control (RBAC) with proper permission checks",
+  },
+  input_validation: {
+    pattern: /\b(validate|sanitize|escape|input\s*check|form\s*validation|schema\s*validation)\b/i,
+    suggestion: "Use a validation library (e.g., zod, joi, class-validator) for all inputs",
+  },
+  encryption: {
+    pattern: /\b(encrypt|decrypt|crypto|hash|cipher|aes|rsa|secret|private\s*key|public\s*key)\b/i,
+    suggestion: "Use proven crypto libraries and key management practices. Never hardcode secrets.",
+  },
+  sql_injection: {
+    pattern: /\b(query|sql|database|db|raw\s*query|execute|select\s*from|insert\s*into)\b/i,
+    suggestion: "Use parameterized queries or ORM to prevent SQL injection",
+  },
+  xss: {
+    pattern: /\b(html|innerHTML|dangerouslySetInnerHTML|render|template|unsafe|display\s*html)\b/i,
+    suggestion: "Sanitize HTML output and use framework-safe rendering methods",
+  },
+  csrf: {
+    pattern: /\b(form|submit|post\s*request|csfr|cross-site)\b/i,
+    suggestion: "Implement CSRF tokens for state-changing operations",
+  },
+  secrets: {
+    pattern: /\b(api\s*key|secret|token|password|credential|env|environment\s*variable)\b/i,
+    suggestion: "Store secrets in environment variables, never in code. Use .env files.",
+  },
+};
+
+// Architecture pattern hints
+const ARCHITECTURE_PATTERNS: Record<string, { pattern: RegExp; components: string[] }> = {
+  repository: {
+    pattern: /\b(repository|repo|data\s*access|dal|persistence)\b/i,
+    components: ["Repository interface", "Concrete implementation", "Factory method"],
+  },
+  factory: {
+    pattern: /\b(factory|create.*instance|builder|constructor\s*pattern)\b/i,
+    components: ["Factory class", "Product interface", "Concrete products"],
+  },
+  mvc: {
+    pattern: /\b(mvc|model.*view.*controller|controller|view|model)\b/i,
+    components: ["Model", "View", "Controller", "Router"],
+  },
+  clean_architecture: {
+    pattern: /\b(clean\s*architecture|layer.*separation|domain.*logic|use\s*case|interactor)\b/i,
+    components: ["Entities", "Use Cases", "Interface Adapters", "Frameworks/Drivers"],
+  },
+  cqrs: {
+    pattern: /\b(cqrs|command.*query.*separation|command|query|event\s*source)\b/i,
+    components: ["Command handler", "Query handler", "Event bus"],
+  },
+  adapter: {
+    pattern: /\b(adapter|wrapper|decorator|translator|bridge)\b/i,
+    components: ["Target interface", "Adapter class", "Adaptee"],
+  },
+  facade: {
+    pattern: /\b(facade|simplified\s*api|convenience\s*method|high\s*level)\b/i,
+    components: ["Facade class", "Subsystem classes"],
+  },
+  observer: {
+    pattern: /\b(observer|subscriber|publisher|subscriber|event\s*listener|hook|callback)\b/i,
+    components: ["Subject", "Observer interface", "Concrete observer"],
+  },
+};
+
 // === JavaScript/TypeScript imports ===
 import { verifyJavaScript, extractJSImports, fixJavaScript } from "./javascript.js";
 import { verifyTypeScript, fixTypeScript } from "./typescript.js";
@@ -926,6 +1019,9 @@ export function analyzePrompt(prompt: string, language = "python"): AnalysisResu
   const intendedFunctions: string[] = [];
   const warnings: string[] = [];
   const detectedFrameworks: string[] = [];
+  const securityRequirements: SecurityRequirement[] = [];
+  const architectureHints: ArchitectureHint[] = [];
+  const clarifyingQuestions: string[] = [];
 
   // Pattern para imports mencionados
   const importPatterns = [
@@ -981,12 +1077,109 @@ export function analyzePrompt(prompt: string, language = "python"): AnalysisResu
     }
   }
 
+  // === NEW: Detectar requisitos de seguridad ===
+  for (const [secType, { pattern, suggestion }] of Object.entries(SECURITY_PATTERNS)) {
+    if (pattern.test(prompt)) {
+      securityRequirements.push({
+        type: secType as SecurityRequirement["type"],
+        mentioned: true,
+        details: `Security concern detected: ${secType}`,
+        suggestion,
+      });
+    }
+  }
+
+  // === NEW: Detectar hints de arquitectura ===
+  for (const [archType, { pattern, components }] of Object.entries(ARCHITECTURE_PATTERNS)) {
+    if (pattern.test(prompt)) {
+      architectureHints.push({
+        pattern: archType as ArchitectureHint["pattern"],
+        mentioned: true,
+        details: `Architecture pattern detected: ${archType}`,
+        components,
+      });
+    }
+  }
+
+  // === NEW: Calcular clarity score ===
+  let clarityScore = 100;
+  const vaguenessIndicators: string[] = [];
+
+  if (prompt.trim().length < 20) {
+    clarityScore -= 30;
+    vaguenessIndicators.push("prompt_too_short");
+  }
+
+  if (intendedImports.length === 0 && detectedIntentions.length === 0) {
+    clarityScore -= 20;
+    vaguenessIndicators.push("no_imports_or_intentions");
+  }
+
+  if (!/\bfunction|class|method|api|endpoint|component|service\b/i.test(prompt)) {
+    clarityScore -= 15;
+    vaguenessIndicators.push("no_clear_deliverable");
+  }
+
+  if (!/\busing|with|create|build|implement|make|generate\b/i.test(prompt)) {
+    clarityScore -= 10;
+    vaguenessIndicators.push("no_action_verb");
+  }
+
+  if (securityRequirements.length === 0 && /auth|login|password|user/i.test(prompt)) {
+    clarityScore -= 10;
+    vaguenessIndicators.push("auth_without_security");
+  }
+
+  clarityScore = Math.max(0, Math.min(100, clarityScore));
+  const isVague = clarityScore < 60;
+
+  // === NEW: Generar preguntas de clarificación si es vago ===
+  if (isVague) {
+    if (!detectedFrameworks.length) {
+      clarifyingQuestions.push("¿Qué framework o tecnología prefieres para este proyecto?");
+    }
+    if (!detectedIntentions.includes("api") && !detectedIntentions.includes("database")) {
+      clarifyingQuestions.push("¿Cómo debería este código almacenar o acceder a datos?");
+    }
+    if (!detectedIntentions.includes("frontend") && !detectedIntentions.includes("backend")) {
+      clarifyingQuestions.push("¿Este código es para el frontend, backend, o ambos?");
+    }
+    if (!architectureHints.length) {
+      clarifyingQuestions.push("¿Hay alguna estructura de proyecto o patrón de arquitectura que prefieras?");
+    }
+    if (securityRequirements.length === 0 && /user|account|profile/i.test(prompt)) {
+      clarifyingQuestions.push("¿Cómo deberías manejar la autenticación y autorización de usuarios?");
+    }
+  }
+
+  // === NEW: Generar improved prompt ===
+  let improvedPrompt = prompt;
+  if (isVague && clarifyingQuestions.length > 0) {
+    // Add context hints for better prompt
+    improvedPrompt = prompt.trim();
+
+    // Add framework hint if missing
+    if (detectedFrameworks.length === 0) {
+      improvedPrompt += " [Framework no especificado - considerar agregar framework objetivo]";
+    }
+
+    // Add architecture hint if missing
+    if (architectureHints.length === 0 && (detectedIntentions.includes("api") || detectedIntentions.includes("backend"))) {
+      improvedPrompt += " [Arquitectura no especificada - considerar patrón de diseño]";
+    }
+  }
+
+  // Warnings
   if (prompt.trim().length < 20) {
     warnings.push("Prompt muy corto, análisis limitado");
   }
 
   if (detectedIntentions.length > 0) {
     warnings.push(`Intenciones detectadas: ${detectedIntentions.join(", ")}`);
+  }
+
+  if (isVague) {
+    warnings.push("Prompt vago - se recomiendan preguntas de clarificación");
   }
 
   return {
@@ -996,7 +1189,14 @@ export function analyzePrompt(prompt: string, language = "python"): AnalysisResu
     language,
     detected_frameworks: detectedFrameworks,
     detected_intentions: detectedIntentions,
-  } as AnalysisResult & { detected_frameworks: string[]; detected_intentions: string[] };
+    // New fields
+    security_requirements: securityRequirements,
+    architecture_hints: architectureHints,
+    improved_prompt: improvedPrompt,
+    clarifying_questions: clarifyingQuestions,
+    clarity_score: clarityScore,
+    is_vague: isVague,
+  };
 }
 
 export function verifyCode(

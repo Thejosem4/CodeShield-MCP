@@ -5,13 +5,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/typescript-5.3-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/node-20+-green.svg)](https://nodejs.org/)
-[![npm](https://img.shields.io/badge/npm-v0.6.3-red.svg)](https://www.npmjs.com/package/codeshield-verify-mcp)
+[![npm](https://img.shields.io/badge/npm-v0.6.4-red.svg)](https://www.npmjs.com/package/codeshield-verify-mcp)
 
 ---
 
 ## Estado Actual
 
-**Versión:** 0.6.3 (ALPHA) - [npm package](https://www.npmjs.com/package/codeshield-verify-mcp)
+**Versión:** 0.6.4 (ALPHA) - [npm package](https://www.npmjs.com/package/codeshield-verify-mcp)
 
 ### Modos de Uso
 
@@ -24,8 +24,12 @@
 
 | Herramienta | Descripción |
 |-------------|-------------|
-| `analyze_prompt` | Analiza prompts, detecta frameworks e intenciones |
+| `analyze_prompt` | Analiza prompts, detecta frameworks, intenciones, security requirements |
 | `verify_code` | Verifica código generado (Python, JS, TS, Go, Rust, React, Angular) |
+| `suggest_fix` | Sugiere corrección específica para un issue |
+| `check_imports` | Valida imports contra stdlib |
+| `quick_fix` | Aplica fixes automáticos para issues comunes |
+| `deep_fix` | Fix enriquecido con contexto de proyecto y stdlib (100% local) |
 | `suggest_similar_name` | Sugiere correcciones para typos |
 | `fix_code` | Corrige automáticamente errores |
 | `index_project` | Indexa proyecto con cache en memoria |
@@ -55,6 +59,8 @@ npm install -g codeshield-verify-mcp
 ### Desde código fuente
 
 ```bash
+git clone https://github.com/Thejosem4/CodeShield-MCP.git
+cd CodeShield-MCP/src
 npm install
 npm run build
 ```
@@ -76,6 +82,20 @@ npm run build
 
 ---
 
+## Lenguajes Soportados
+
+| Lenguaje | Detección | Auto-fix |
+|----------|-----------|----------|
+| Python | ✅ | ✅ |
+| JavaScript | ✅ | ✅ |
+| TypeScript | ✅ | ✅ |
+| Go | ✅ | ✅ |
+| Rust | ✅ | ✅ |
+| React | ✅ | ❌ |
+| Angular | ✅ | ❌ |
+
+---
+
 ## Seguridad
 
 - **Path traversal protection** en scanProject() e indexProject()
@@ -84,14 +104,27 @@ npm run build
 - **ReDoS prevention** con memoization y early exit
 - **Race condition protection** con file locking en context-store
 - **Atomic writes** con temp file + rename
-- **14 security tests** cubriendo: race conditions, ReDoS, path traversal, input validation
+- **Security tests** cubriendo: race conditions, ReDoS, path traversal, input validation
+
+---
+
+## Fix Intelligence Layer
+
+Sistema de sugerencia de fixes 100% local que usa contexto para sugerir correcciones:
+
+1. **Typos conocidos** - Détecta errores comunes (console.logg → log)
+2. **Project index** - Busca en el codebase indexado (95% confidence)
+3. **Stdlib lookup** - Busca en bibliotecas estándar (90% confidence)
+4. **Fuzzy matching** - Levenshtein distance (60-89% confidence)
+5. **Pattern extraction** - Código similar en el proyecto (40-59% confidence)
+6. **Fallback** - Hints manuales cuando no hay match (<40%)
 
 ---
 
 ## Testing
 
 ```bash
-npm test  # 99 tests incluyendo 14 de seguridad
+npm test  # 99+ tests incluyendo seguridad
 ```
 
 ---
@@ -104,7 +137,9 @@ npm test  # 99 tests incluyendo 14 de seguridad
 | **0.6.1** | Security fixes, file locking, CLI validation | ✅ Published |
 | **0.6.2** | JS/TS stdlib expansion, prompt analysis | ✅ Published |
 | **0.6.3** | Go, Rust, React, Angular detection | ✅ Published |
-| **0.6.4+** | Mejoras de detección | 🔲 Pendiente |
+| **0.6.4** | Verification Engine unificado | ✅ Published |
+| **0.6.5** | Fix Intelligence Layer, Ollama Agent | ✅ Latest |
+| **0.7.0** | Mejoras de detección | 🔲 Pendiente |
 
 ---
 
