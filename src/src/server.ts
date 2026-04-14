@@ -29,14 +29,6 @@ import {
 import { deepFix } from "./fix-intelligence/index.js";
 
 import {
-  checkOllamaStatus,
-  runOllamaTests,
-  CheckOllamaStatusSchema,
-  RunOllamaTestsSchema,
-  runComprehensiveAnalysis,
-} from "./testing/index.js";
-
-import {
   getCachedIndex,
   setCachedIndex,
   invalidateIndex,
@@ -342,68 +334,6 @@ server.registerTool(
     return {
       content: [{ type: "text", text: JSON.stringify({ success: true }, null, 2) }],
     };
-  }
-);
-
-// Tool: check_ollama_status
-server.registerTool(
-  "check_ollama_status",
-  {
-    description: "Verifica si Ollama está corriendo y el modelo qwen2.5-coder:7b está disponible",
-    inputSchema: CheckOllamaStatusSchema,
-  },
-  async () => {
-    const status = await checkOllamaStatus();
-    return {
-      content: [{ type: "text", text: JSON.stringify(status, null, 2) }],
-    };
-  }
-);
-
-// Tool: run_ollama_tests
-server.registerTool(
-  "run_ollama_tests",
-  {
-    description: "Ejecuta tests impulsados por IA local (Ollama) en código para detectar errores de seguridad, funcionales y mal funcionamiento. Modes: quick (critical only), standard (normal), deep (full analysis), audit (security + quality).",
-    inputSchema: RunOllamaTestsSchema,
-  },
-  async ({ code, file, project_dir, categories, auto_fix, model, timeout, mode = "standard", report }) => {
-    try {
-      // Run comprehensive pattern analysis first
-      const patternIssues = code ? runComprehensiveAnalysis(code) : [];
-
-      // Run Ollama tests
-      const result = await runOllamaTests({ code, file, project_dir, categories, auto_fix, model, timeout, mode, report });
-
-      // Merge pattern analysis results with AI results
-      const mergedResults = [...patternIssues, ...result.results];
-
-      const mergedSummary = {
-        total: mergedResults.length,
-        critical: mergedResults.filter(i => i.severity === "CRITICAL").length,
-        high: mergedResults.filter(i => i.severity === "HIGH").length,
-        medium: mergedResults.filter(i => i.severity === "MEDIUM").length,
-        low: mergedResults.filter(i => i.severity === "LOW").length,
-        info: mergedResults.filter(i => i.severity === "INFO").length,
-        auto_fixed: result.summary.auto_fixed,
-      };
-
-      return {
-        content: [{
-          type: "text",
-          text: JSON.stringify({
-            ...result,
-            results: mergedResults,
-            summary: mergedSummary,
-            pattern_analysis_count: patternIssues.length,
-          }, null, 2),
-        }],
-      };
-    } catch (error) {
-      return {
-        content: [{ type: "text", text: JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }, null, 2) }],
-      };
-    }
   }
 );
 

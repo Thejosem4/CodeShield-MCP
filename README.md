@@ -124,7 +124,7 @@ Sistema de sugerencia de fixes 100% local que usa contexto para sugerir correcci
 ## Testing
 
 ```bash
-npm test  # 99+ tests incluyendo seguridad
+npm test
 ```
 
 ---
