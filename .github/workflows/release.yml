@@ -25,6 +25,8 @@ jobs:
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+          cache-dependency-path: 'src/package-lock.json'
 
       - name: Install dependencies
         run: npm install
