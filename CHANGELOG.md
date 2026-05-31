@@ -7,7 +7,15 @@ y este proyecto adhiere a [Semantic Versioning](https://semver.org/lang/es/).
 
 ---
 
-## [0.6.5] - 2026-04-14 - ALPHA
+## [0.6.5] - 2026-05-31 - ALPHA
+
+### Arquitectura y Concurrencia
+
+- 🆕 **Stateless Concurrency** - Migración a SQLite WAL (`cache.ts`) para soportar múltiples clientes (Gemini/Claude) sin colisiones de lectura/escritura.
+- 🆕 **Surgical Diffs** - Motor `diff-engine.ts` que reduce el ruido visual al enfocarse únicamente en advertencias sobre las líneas modificadas por el LLM.
+- 🆕 **Triage Semántico (AST Analyzer)** - Extrae y consolida dependencias/imports rotos para no abrumar al LLM con errores en cascada.
+- 🆕 **Hook Interceptor (`codeshield init`)** - Instala un interceptor en clientes de IA (Gemini/Claude) que detiene ejecuciones riesgosas de forma interactiva.
+- 🛡️ **Seguridad Mejorada** - Integración de escaneo de dependencias y auditoría de vulnerabilidades en workflows.
 
 ### Fix Intelligence Layer
 

@@ -1,6 +1,6 @@
 {
   "name": "codeshield-verify-mcp",
-  "version": "0.6.4",
+  "version": "0.6.5",
   "description": "MCP server and CLI that prevents LLM hallucinations by verifying code against known libraries and frameworks",
   "type": "module",
   "main": "dist/index.js",
@@ -44,9 +44,13 @@
   "homepage": "https://github.com/Thejosem4/CodeShield-MCP#readme",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0",
+    "better-sqlite3": "^12.10.0",
+    "diff": "^9.0.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/diff": "^7.0.2",
     "@types/node": "^20.19.39",
     "tsx": "^4.21.0",
     "typescript": "^5.3.0",

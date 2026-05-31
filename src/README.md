@@ -5,13 +5,13 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/typescript-5.3-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/node-20+-green.svg)](https://nodejs.org/)
-[![npm](https://img.shields.io/badge/npm-v0.6.2-red.svg)](https://www.npmjs.com/package/codeshield-verify-mcp)
+[![npm](https://img.shields.io/badge/npm-v0.6.5-red.svg)](https://www.npmjs.com/package/codeshield-verify-mcp)
 
 ---
 
 ## Estado Actual
 
-**Versión:** 0.6.2 (ALPHA) - [npm package](https://www.npmjs.com/package/codeshield-verify-mcp)
+**Versión:** 0.6.5 (ALPHA) - [npm package](https://www.npmjs.com/package/codeshield-verify-mcp)
 
 ### Modos de Uso
 
@@ -28,9 +28,11 @@
 | `verify_code` | Verifica código generado (Python, JS, TS) |
 | `suggest_similar_name` | Sugiere correcciones para typos |
 | `fix_code` | Corrige automáticamente errores |
-| `index_project` | Indexa proyecto con cache en memoria |
+| `index_project` | Indexa proyecto con cache en memoria (SQLite WAL mode) |
 | `cache_stats` | Estadísticas del cache |
 | `cache_clear` | Limpia el cache |
+
+> ✨ **Novedad v0.6.5:** Concurrencia Stateless (SQLite WAL), Surgical Diffs para reducir ruido visual y AST Triage Analyzer.
 
 ### Comandos CLI
 

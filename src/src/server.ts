@@ -53,6 +53,10 @@ const VerifyCodeSchema = z.object({
   code: z.string().max(MAX_INPUT_SIZE),
   language: z.string().optional(),
   check_level: z.enum(["fast", "standard", "thorough"]).optional(),
+  file_path: z.string().optional().describe(
+    "Ruta absoluta al archivo original en disco. Si se provee, activa el filtrado quirúrgico de diffs "
+    + "(reporta solo issues en líneas modificadas) y el triage de causalidad AST."
+  ),
 });
 
 const SuggestFixSchema = z.object({
@@ -130,12 +134,17 @@ server.registerTool(
 server.registerTool(
   "verify_code",
   {
-    description: "Verifica código en local (0 tokens) para errores de sintaxis, typos, imports faltantes. Soporta: javascript, typescript, python, rust, go, react, angular.",
+    description: [
+      "Verifica código en local (0 tokens) para errores de sintaxis, typos, imports faltantes.",
+      "Soporta: javascript, typescript, python, rust, go, react, angular.",
+      "Si se provee file_path, activa el Diff Quirúrgico: solo reporta issues en las líneas cambiadas,",
+      "suprime warnings del código legado no modificado, y agrupa errores en cascada bajo causas raíz (AST Triage).",
+    ].join(" "),
     inputSchema: VerifyCodeSchema,
   },
-  async ({ code, language = "python", check_level }) => {
+  async ({ code, language = "python", check_level, file_path }) => {
     try {
-      const result = verifyCode(code, language, { checkLevel: check_level });
+      const result = verifyCode(code, language, { checkLevel: check_level, filePath: file_path });
       return {
         content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
       };

@@ -13,6 +13,10 @@ jobs:
       run:
         working-directory: src
 
+    permissions:
+      contents: write # Needed for GitHub Release
+      id-token: write # Needed for NPM Provenance
+
     steps:
       - uses: actions/checkout@v4
 
@@ -28,7 +32,12 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+
       - name: Publish to npm
-        run: npm publish
+        run: npm publish --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

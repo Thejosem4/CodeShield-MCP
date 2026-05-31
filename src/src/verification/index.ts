@@ -9,7 +9,10 @@
  * 2. Zero external dependencies for basic checks
  * 3. Actionable suggestions - not just "error", but "fix: ..."
  * 4. Delegates to detection modules - not a separate implementation
+ * 5. Surgical diffs — only report issues on changed lines (Hito 3/4)
+ * 6. AST causality triage — group cascading errors under root causes (Hito 5)
  */
+import * as fs from "fs";
 
 // Unified Issue type for MCP responses
 export type IssueType = "syntax" | "typo" | "import" | "function" | "logic" | "security";
@@ -33,7 +36,11 @@ export interface VerificationResult {
     issues_found: number;
     verification_time_ms: number;
     language: string;
+    suppressed_by_diff?: number;
+    surgical_diff_active?: boolean;
   };
+  /** Present when surgical diff + AST triage is active */
+  triage?: import("./ast-analyzer.js").TriageResult;
 }
 
 export interface FixSuggestion {
@@ -87,6 +94,9 @@ import {
 import {
   verifyCode as verifyPyCode,
 } from "../detection/index.js";
+
+import { getAffectedLines, isNewFile } from "./diff-engine.js";
+import { analyzeCausality } from "./ast-analyzer.js";
 
 // ============================================
 // INTERNAL TYPES FROM DETECTION (used for conversion)
@@ -345,14 +355,20 @@ const languageVerifiers: Record<string, (code: string) => Issue[]> = {
 };
 
 /**
- * Verify code for common issues
- * Fast and local - no external API calls
- * Delegates to the appropriate detection module
+ * Verify code for common issues.
+ * Fast and local — no external API calls.
+ * Delegates to the appropriate detection module.
+ *
+ * When `filePath` is provided, surgical diff filtering is applied:
+ * - Reads the original file from disk
+ * - Computes affected lines using diff-engine
+ * - Discards issues on unchanged lines (except critical import errors)
+ * - Runs AST causality triage for cascading error grouping
  */
 export function verifyCode(
   code: string,
   language: string,
-  _options?: { checkLevel?: "fast" | "standard" | "thorough" }
+  options?: { checkLevel?: "fast" | "standard" | "thorough"; filePath?: string }
 ): VerificationResult {
   const startTime = Date.now();
   const normalizedLang = language.toLowerCase();
@@ -376,16 +392,71 @@ export function verifyCode(
     };
   }
 
-  const issues = verifier(code);
+  // === Run full detection on the proposed code ===
+  const allIssues = verifier(code);
+
+  // === Surgical Diff Filtering (Hito 4) ===
+  // Only active when a filePath is provided and the file exists on disk
+  const filePath = options?.filePath;
+  let originalCode: string | null = null;
+
+  if (filePath) {
+    try {
+      if (fs.existsSync(filePath)) {
+        originalCode = fs.readFileSync(filePath, "utf-8");
+      }
+    } catch {
+      // If file read fails, proceed without surgical diff
+      originalCode = null;
+    }
+  }
+
+  let filteredIssues = allIssues;
+  let suppressedCount = 0;
+  let surgicalDiffActive = false;
+  let triage: import("./ast-analyzer.js").TriageResult | undefined = undefined;
+
+  if (originalCode !== null && !isNewFile(originalCode)) {
+    surgicalDiffActive = true;
+    const affectedLines = getAffectedLines(originalCode, code);
+
+    filteredIssues = allIssues.filter((issue) => {
+      // === Exception: Never suppress critical import errors ===
+      // These are file-level issues regardless of which line they appear on
+      if (
+        issue.type === "import" &&
+        (issue.severity === "critical" ||
+          issue.message.toLowerCase().includes("module_not_found") ||
+          issue.message.toLowerCase().includes("import_error") ||
+          issue.message.toLowerCase().includes("not found") ||
+          issue.message.toLowerCase().includes("cannot find"))
+      ) {
+        return true; // Always include global import errors
+      }
+
+      // Keep issue only if it's on an affected (changed) line
+      return affectedLines.has(issue.line);
+    });
+
+    suppressedCount = allIssues.length - filteredIssues.length;
+
+    // === AST Causality Triage (Hito 5) ===
+    triage = analyzeCausality(originalCode, code, filteredIssues, suppressedCount);
+  }
 
   return {
-    issues,
+    issues: filteredIssues,
     stats: {
       lines_checked: code.split("\n").length,
-      issues_found: issues.length,
+      issues_found: filteredIssues.length,
       verification_time_ms: Date.now() - startTime,
       language,
+      ...(surgicalDiffActive && {
+        suppressed_by_diff: suppressedCount,
+        surgical_diff_active: true,
+      }),
     },
+    ...(triage && { triage }),
   };
 }
 

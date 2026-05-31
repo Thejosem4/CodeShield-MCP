@@ -5,46 +5,46 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![TypeScript](https://img.shields.io/badge/typescript-5.3-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/node-20+-green.svg)](https://nodejs.org/)
-[![npm](https://img.shields.io/badge/npm-v0.6.4-red.svg)](https://www.npmjs.com/package/codeshield-verify-mcp)
+[![npm](https://img.shields.io/badge/npm-v0.6.5-red.svg)](https://www.npmjs.com/package/codeshield-verify-mcp)
 
 ---
 
 ## Estado Actual
 
-**Versión:** 0.6.4 (ALPHA) - [npm package](https://www.npmjs.com/package/codeshield-verify-mcp)
+**Versión:** 0.6.5(ALPHA) - [npm package](https://www.npmjs.com/package/codeshield-verify-mcp)
 
 ### Modos de Uso
 
-| Modo | Descripción |
-|------|-------------|
-| **MCP Server** | Integración con Claude Code, Claude CLI, Gemini CLI |
-| **CLI** | Comandos standalone: verify, scan, explain, audit-deps, context |
+| Modo                 | Descripción                                                    |
+| -------------------- | --------------------------------------------------------------- |
+| **MCP Server** | Integración con Claude Code, Claude CLI, Gemini CLI            |
+| **CLI**        | Comandos standalone: verify, scan, explain, audit-deps, context |
 
 ### Herramientas MCP
 
-| Herramienta | Descripción |
-|-------------|-------------|
-| `analyze_prompt` | Analiza prompts, detecta frameworks, intenciones, security requirements |
-| `verify_code` | Verifica código generado (Python, JS, TS, Go, Rust, React, Angular) |
-| `suggest_fix` | Sugiere corrección específica para un issue |
-| `check_imports` | Valida imports contra stdlib |
-| `quick_fix` | Aplica fixes automáticos para issues comunes |
-| `deep_fix` | Fix enriquecido con contexto de proyecto y stdlib (100% local) |
-| `suggest_similar_name` | Sugiere correcciones para typos |
-| `fix_code` | Corrige automáticamente errores |
-| `index_project` | Indexa proyecto con cache en memoria |
-| `cache_stats` | Estadísticas del cache |
-| `cache_clear` | Limpia el cache |
+| Herramienta              | Descripción                                                            |
+| ------------------------ | ----------------------------------------------------------------------- |
+| `analyze_prompt`       | Analiza prompts, detecta frameworks, intenciones, security requirements |
+| `verify_code`          | Verifica código generado (Python, JS, TS, Go, Rust, React, Angular)    |
+| `suggest_fix`          | Sugiere corrección específica para un issue                           |
+| `check_imports`        | Valida imports contra stdlib                                            |
+| `quick_fix`            | Aplica fixes automáticos para issues comunes                           |
+| `deep_fix`             | Fix enriquecido con contexto de proyecto y stdlib (100% local)          |
+| `suggest_similar_name` | Sugiere correcciones para typos                                         |
+| `fix_code`             | Corrige automáticamente errores                                        |
+| `index_project`        | Indexa proyecto con cache SQLite WAL (Stateless Concurrency)            |
+| `cache_stats`          | Estadísticas del cache (multi-proceso)                                  |
+| `cache_clear`          | Limpia el cache                                                         |
 
 ### Comandos CLI
 
-| Comando | Descripción |
-|---------|-------------|
-| `codeshield verify <file>` | Verificar archivo |
-| `codeshield scan [dir]` | Escanear proyecto completo |
-| `codeshield audit-deps <file>` | Auditar CVEs en requirements.txt |
-| `codeshield context save/list/restore/delete` | Persistencia de contexto |
-| `codeshield serve` | Iniciar servidor MCP |
+| Comando                                         | Descripción                     |
+| ----------------------------------------------- | -------------------------------- |
+| `codeshield verify <file>`                    | Verificar archivo                |
+| `codeshield scan [dir]`                       | Escanear proyecto completo       |
+| `codeshield audit-deps <file>`                | Auditar CVEs en requirements.txt |
+| `codeshield context save/list/restore/delete` | Persistencia de contexto         |
+| `codeshield serve`                            | Iniciar servidor MCP             |
 
 ---
 
@@ -84,21 +84,25 @@ npm run build
 
 ## Lenguajes Soportados
 
-| Lenguaje | Detección | Auto-fix |
-|----------|-----------|----------|
-| Python | ✅ | ✅ |
-| JavaScript | ✅ | ✅ |
-| TypeScript | ✅ | ✅ |
-| Go | ✅ | ✅ |
-| Rust | ✅ | ✅ |
-| React | ✅ | ❌ |
-| Angular | ✅ | ❌ |
+| Lenguaje   | Detección | Auto-fix |
+| ---------- | ---------- | -------- |
+| Python     | ✅         | ✅       |
+| JavaScript | ✅         | ✅       |
+| TypeScript | ✅         | ✅       |
+| Go         | ✅         | ✅       |
+| Rust       | ✅         | ✅       |
+| React      | ✅         | ❌       |
+| Angular    | ✅         | ❌       |
 
 ---
 
 ## Seguridad
 
 - **Path traversal protection** en scanProject() e indexProject()
+- **Stateless Concurrency** usando SQLite WAL mode (multi-agente safe)
+- **Surgical Diffs** para reducir ruido visual, limitando warnings a código afectado
+- **AST Causality Analyzer** para agrupar errores en cascada lógicamente
+- **Hook Interceptor** (`codeshield init`) para sincronización proactiva con clientes IA
 - **CVE database** para dependency audit (21 packages, CVEs 2023-2024)
 - **Input validation** (100KB limit en CLI, 1MB en MCP)
 - **ReDoS prevention** con memoization y early exit
@@ -131,15 +135,15 @@ npm test
 
 ## Roadmap
 
-| Version | Focus | Status |
-|---------|-------|--------|
-| **0.6.0** | CLI, Context, Audit Deps, Security | ✅ Published |
+| Version         | Focus                                        | Status       |
+| --------------- | -------------------------------------------- | ------------ |
+| **0.6.0** | CLI, Context, Audit Deps, Security           | ✅ Published |
 | **0.6.1** | Security fixes, file locking, CLI validation | ✅ Published |
-| **0.6.2** | JS/TS stdlib expansion, prompt analysis | ✅ Published |
-| **0.6.3** | Go, Rust, React, Angular detection | ✅ Published |
-| **0.6.4** | Verification Engine unificado | ✅ Published |
-| **0.6.5** | Fix Intelligence Layer, Ollama Agent | ✅ Latest |
-| **0.7.0** | Mejoras de detección | 🔲 Pendiente |
+| **0.6.2** | JS/TS stdlib expansion, prompt analysis      | ✅ Published |
+| **0.6.3** | Go, Rust, React, Angular detection           | ✅ Published |
+| **0.6.4** | Verification Engine unificado                | ✅ Published |
+| **0.6.5** | Fix Intelligence Layer, Ollama Agent         | ✅ Latest    |
+| **0.7.0** | Mejoras de detección                        | 🔲 Pendiente |
 
 ---
 
